@@ -4,6 +4,7 @@
 package workspace
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -14,11 +15,16 @@ import (
 // Prepare copies app into dst, overlays bundle on top of it and commits the
 // result as the git baseline. The baseline includes the bundle so that a later
 // diff only surfaces changes made to the application itself.
+//
+// When app is a git repository, only its committed tree (HEAD) is copied, so
+// build artifacts and other ignored files stay out of the sandbox and the
+// benchmark runs against a reproducible baseline. Otherwise the whole tree is
+// copied verbatim (minus any top-level .git directory).
 func Prepare(app, bundle, dst string) error {
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return err
 	}
-	if err := copyTree(app, dst); err != nil {
+	if err := populateApp(app, dst); err != nil {
 		return fmt.Errorf("copy app: %w", err)
 	}
 	if err := copyTree(bundle, dst); err != nil {
@@ -26,6 +32,46 @@ func Prepare(app, bundle, dst string) error {
 	}
 	if err := gitBaseline(dst); err != nil {
 		return fmt.Errorf("git baseline: %w", err)
+	}
+	return nil
+}
+
+func populateApp(app, dst string) error {
+	if isGitRepo(app) {
+		return gitArchive(app, dst)
+	}
+	return copyTree(app, dst)
+}
+
+func isGitRepo(dir string) bool {
+	info, err := os.Stat(filepath.Join(dir, ".git"))
+	return err == nil && info.IsDir()
+}
+
+// gitArchive extracts the committed tree of app (HEAD) into dst.
+func gitArchive(app, dst string) error {
+	archive := exec.Command("git", "-C", app, "archive", "--format=tar", "HEAD")
+	untar := exec.Command("tar", "-x", "-C", dst)
+
+	r, w := io.Pipe()
+	archive.Stdout = w
+	untar.Stdin = r
+
+	var archiveErr, untarErr bytes.Buffer
+	archive.Stderr = &archiveErr
+	untar.Stderr = &untarErr
+
+	if err := untar.Start(); err != nil {
+		return err
+	}
+	if err := archive.Run(); err != nil {
+		_ = w.CloseWithError(err)
+		_ = untar.Wait()
+		return fmt.Errorf("git archive: %w: %s", err, archiveErr.String())
+	}
+	_ = w.Close()
+	if err := untar.Wait(); err != nil {
+		return fmt.Errorf("tar extract: %w: %s", err, untarErr.String())
 	}
 	return nil
 }

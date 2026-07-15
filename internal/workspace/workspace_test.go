@@ -42,20 +42,51 @@ func TestPrepareOverlaysAndCommits(t *testing.T) {
 	}
 }
 
-func TestPrepareSkipsSourceGit(t *testing.T) {
+func TestPrepareGitAppUsesCommittedTree(t *testing.T) {
 	base := t.TempDir()
 	app := filepath.Join(base, "app")
 	bundle := filepath.Join(base, "bundle")
 	dst := filepath.Join(base, "ws")
-	write(t, filepath.Join(app, "f.txt"), "x")
-	write(t, filepath.Join(app, ".git", "config"), "should-not-copy")
-	write(t, filepath.Join(bundle, "CLAUDE.md"), "c")
+
+	write(t, filepath.Join(app, "tracked.go"), "package app")
+	write(t, filepath.Join(app, ".gitignore"), "build/\n")
+	write(t, filepath.Join(app, "build", "artifact.bin"), "junk")
+	commitApp(t, app)
+	// Untracked file created after the commit must not reach the workspace.
+	write(t, filepath.Join(app, "scratch.txt"), "uncommitted")
+	write(t, filepath.Join(bundle, "CLAUDE.md"), "cfg")
 
 	if err := Prepare(app, bundle, dst); err != nil {
 		t.Fatal(err)
 	}
-	if data := read(t, filepath.Join(dst, ".git", "config")); data == "should-not-copy" {
-		t.Error("source .git was copied into workspace")
+	if read(t, filepath.Join(dst, "tracked.go")) != "package app" {
+		t.Error("tracked file missing from workspace")
+	}
+	if read(t, filepath.Join(dst, "CLAUDE.md")) != "cfg" {
+		t.Error("bundle not overlaid")
+	}
+	if _, err := os.Stat(filepath.Join(dst, "build", "artifact.bin")); err == nil {
+		t.Error("ignored build artifact leaked into workspace")
+	}
+	if _, err := os.Stat(filepath.Join(dst, "scratch.txt")); err == nil {
+		t.Error("untracked file leaked into workspace")
+	}
+}
+
+func commitApp(t *testing.T, dir string) {
+	t.Helper()
+	env := append(os.Environ(),
+		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
+		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t",
+	)
+	for _, args := range [][]string{
+		{"init", "-q"}, {"add", "-A"}, {"commit", "-q", "--no-gpg-sign", "-m", "base"},
+	} {
+		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+		cmd.Env = env
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
 	}
 }
 
