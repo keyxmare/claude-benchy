@@ -1,0 +1,30 @@
+# claude-benchy report
+
+- **Generated:** 2026-07-15 10:00:00 UTC
+- **App:** /tmp/app
+
+## Prompt
+
+```
+Add a /health endpoint.
+```
+
+## Comparison
+
+| Config | Run | Model | Status | Turns | Tools | Cost | Duration | Files | +Lines | -Lines |
+|--------|-----|-------|--------|-------|-------|------|----------|-------|--------|--------|
+| baseline | 1 | sonnet | ok | 3 | 4 | $0.0123 | 8.2s | 2 | 30 | 4 |
+| strict | 1 | opus | error | 0 | 0 | $0.0000 | 0.0s | 0 | 0 | 0 |
+
+## Runs
+
+### baseline (run 1)
+
+- **Artifacts:** baseline
+- **Result:** Done.
+
+### strict (run 1)
+
+- **Artifacts:** strict
+- **Error:** docker run: exit status 1
+

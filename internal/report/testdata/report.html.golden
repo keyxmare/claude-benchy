@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>claude-benchy report</title>
+<style>
+body { font-family: system-ui, sans-serif; margin: 2rem; color: #1a1a1a; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; }
+th { background: #f4f4f4; }
+pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+.ok { color: #1a7f37; }
+.error, .claude-error { color: #cf222e; }
+code { font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<h1>claude-benchy report</h1>
+<p><strong>Generated:</strong> 2026-07-15 10:00:00 UTC<br>
+<strong>App:</strong> <code>/tmp/app</code></p>
+<h2>Prompt</h2>
+<pre>Add a /health endpoint.</pre>
+<h2>Comparison</h2>
+<table>
+<thead>
+<tr><th>Config</th><th>Run</th><th>Model</th><th>Status</th><th>Turns</th><th>Tools</th><th>Cost</th><th>Duration</th><th>Files</th><th>+Lines</th><th>-Lines</th></tr>
+</thead>
+<tbody>
+<tr>
+<td>baseline</td><td>1</td><td>sonnet</td>
+<td class="ok">ok</td>
+<td>3</td><td>4</td>
+<td>$0.0123</td><td>8.2s</td>
+<td>2</td><td>30</td><td>4</td>
+</tr>
+<tr>
+<td>strict</td><td>1</td><td>opus</td>
+<td class="error">error</td>
+<td>0</td><td>0</td>
+<td>$0.0000</td><td>0.0s</td>
+<td>0</td><td>0</td><td>0</td>
+</tr>
+</tbody>
+</table>
+<h2>Runs</h2>
+
+<h3>baseline (run 1)</h3>
+<ul>
+<li><strong>Artifacts:</strong> <code>baseline</code></li>
+<li><strong>Result:</strong> Done.</li>
+</ul>
+
+<h3>strict (run 1)</h3>
+<ul>
+<li><strong>Artifacts:</strong> <code>strict</code></li>
+<li class="error"><strong>Error:</strong> docker run: exit status 1</li>
+</ul>
+
+</body>
+</html>
