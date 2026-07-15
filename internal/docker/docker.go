@@ -1,0 +1,95 @@
+// Package docker runs the Claude sandbox container by shelling out to the
+// docker CLI. The command construction is kept as a pure function so it can be
+// unit tested without a Docker daemon.
+package docker
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"os/exec"
+	"sort"
+)
+
+// Container paths used by the sandbox image.
+const (
+	workMount  = "/work"
+	credsMount = "/benchy/creds/.credentials.json"
+)
+
+// RunSpec fully describes one sandbox invocation.
+type RunSpec struct {
+	Image     string
+	WorkDir   string            // host path mounted read-write at /work
+	CredsFile string            // host credentials file mounted read-only
+	Env       map[string]string // extra environment for the container
+	Args      []string          // arguments passed to `claude`
+}
+
+// Runner executes and builds sandbox containers.
+type Runner interface {
+	Run(ctx context.Context, spec RunSpec, stdout, stderr io.Writer) error
+	Build(ctx context.Context, contextDir, tag string, buildArgs map[string]string) error
+}
+
+// CLI is a Runner backed by the real docker binary.
+type CLI struct {
+	Bin string
+}
+
+// NewCLI returns a CLI runner using the docker binary on PATH.
+func NewCLI() *CLI {
+	return &CLI{Bin: "docker"}
+}
+
+// Run executes the sandbox container and streams its output.
+func (c *CLI) Run(ctx context.Context, spec RunSpec, stdout, stderr io.Writer) error {
+	cmd := exec.CommandContext(ctx, c.Bin, RunArgs(spec)...)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("docker run: %w", err)
+	}
+	return nil
+}
+
+// Build builds the sandbox image from contextDir.
+func (c *CLI) Build(ctx context.Context, contextDir, tag string, buildArgs map[string]string) error {
+	args := []string{"build", "-t", tag}
+	for _, k := range sortedKeys(buildArgs) {
+		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, buildArgs[k]))
+	}
+	args = append(args, contextDir)
+	cmd := exec.CommandContext(ctx, c.Bin, args...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("docker build: %w: %s", err, out)
+	}
+	return nil
+}
+
+// RunArgs builds the docker CLI arguments for a sandbox run.
+func RunArgs(spec RunSpec) []string {
+	args := []string{
+		"run", "--rm",
+		"-v", spec.WorkDir + ":" + workMount,
+		"-w", workMount,
+	}
+	if spec.CredsFile != "" {
+		args = append(args, "-v", spec.CredsFile+":"+credsMount+":ro")
+	}
+	for _, k := range sortedKeys(spec.Env) {
+		args = append(args, "-e", k+"="+spec.Env[k])
+	}
+	args = append(args, spec.Image)
+	args = append(args, spec.Args...)
+	return args
+}
+
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
