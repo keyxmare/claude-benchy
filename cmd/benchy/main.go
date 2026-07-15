@@ -75,7 +75,7 @@ func cmdRun(ctx context.Context, args []string) error {
 	outputRoot := filepath.Join(s.Output, now.Format(timestampLayout))
 
 	rep, err := runner.Run(ctx, s, outputRoot, now.Format(generatedAtLayout), runner.Options{
-		Image:  *image,
+		Image:  resolveImage(fs, *image, s.Sandbox.Image),
 		Docker: docker.NewCLI(),
 		Log:    func(line string) { fmt.Fprintln(os.Stderr, line) },
 	})
@@ -90,6 +90,24 @@ func cmdRun(ctx context.Context, args []string) error {
 	fmt.Printf("done: %d run(s) → %s\n", len(rep.Runs), outputRoot)
 	fmt.Printf("report: %s\n", filepath.Join(outputRoot, "report.html"))
 	return nil
+}
+
+// resolveImage picks the sandbox image: an explicit --image flag wins, then the
+// spec's sandbox.image, then the built-in default.
+func resolveImage(fs *flag.FlagSet, flagValue, specImage string) string {
+	explicit := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "image" {
+			explicit = true
+		}
+	})
+	if explicit {
+		return flagValue
+	}
+	if specImage != "" {
+		return specImage
+	}
+	return flagValue
 }
 
 func cmdReport(args []string) error {

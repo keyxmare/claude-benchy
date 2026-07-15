@@ -24,6 +24,13 @@ type Auth struct {
 	ConfigDir string `yaml:"configDir"`
 }
 
+// Sandbox tunes the container in which Claude runs.
+type Sandbox struct {
+	// Image overrides the default sandbox image (e.g. one bundling the
+	// project's own toolchain so Claude can run its quality gates in-sandbox).
+	Image string `yaml:"image"`
+}
+
 // Config is a single Claude configuration to benchmark.
 type Config struct {
 	Name       string `yaml:"name"`
@@ -42,6 +49,7 @@ type Spec struct {
 	Runs        int      `yaml:"runs"`
 	Concurrency int      `yaml:"concurrency"`
 	Auth        Auth     `yaml:"auth"`
+	Sandbox     Sandbox  `yaml:"sandbox"`
 	Output      string   `yaml:"output"`
 	Configs     []Config `yaml:"configs"`
 
