@@ -43,8 +43,19 @@ Pour en cibler une autre :
 ./benchy run examples/bench.yaml
 ```
 
-Chaque exécution écrit ses artefacts sous
-`<output>/<horodatage>/` et affiche le chemin du rapport HTML.
+Chaque exécution écrit ses artefacts sous `<output>/<horodatage>/`, affiche une
+**progression live** (début/fin de chaque config : durée, coût, diff) et le
+chemin du rapport HTML en fin de run.
+
+### Re-générer un rapport sans relancer
+
+Le rapport (`report.md` / `report.html`) se reconstruit à partir des artefacts
+déjà présents — pratique après une évolution de la mise en page, sans re-payer
+d'appel API :
+
+```sh
+./benchy report <output>/<horodatage>
+```
 
 ### Fichier de banc
 
@@ -57,6 +68,9 @@ runs: 1                        # répétitions par config (variance)
 concurrency: 1                 # runs Docker en parallèle
 auth:
   configDir: ~/.claude         # source des creds OAuth (défaut $CLAUDE_CONFIG_DIR|~/.claude)
+sandbox:
+  image: claude-benchy:latest  # image du bac à sable ; pointe une image embarquant
+                               # le toolchain du projet pour que Claude lance ses checks
 output: ./results
 configs:
   - name: baseline
