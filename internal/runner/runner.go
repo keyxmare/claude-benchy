@@ -42,6 +42,12 @@ type job struct {
 	index  int
 }
 
+type runMeta struct {
+	Config string `json:"config"`
+	Run    int    `json:"run"`
+	Model  string `json:"model"`
+}
+
 // Run executes every job described by s, writing artifacts under outputRoot,
 // and returns the aggregated report. Individual run failures are recorded in
 // the report rather than aborting the whole benchmark.
@@ -49,6 +55,8 @@ func Run(ctx context.Context, s *spec.Spec, outputRoot, generatedAt string, opts
 	if err := os.MkdirAll(outputRoot, 0o755); err != nil {
 		return report.Report{}, err
 	}
+
+	writeJSON(filepath.Join(outputRoot, "bench.json"), benchMeta{Prompt: commonPrompt(s), App: s.App})
 
 	jobs := expand(s)
 	results := make([]report.RunReport, len(jobs))
@@ -89,6 +97,8 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 		Model:       j.config.Model,
 		ArtifactDir: rel,
 	}
+	_ = os.MkdirAll(artifactDir, 0o755)
+	writeJSON(filepath.Join(artifactDir, "meta.json"), runMeta{Config: j.config.Name, Run: j.run, Model: j.config.Model})
 	opts.log("▶ %-18s démarrage (%s)", rel, j.config.Model)
 
 	if err := workspace.Prepare(s.App, j.config.Bundle, workspaceDir); err != nil {
@@ -109,6 +119,7 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 		}
 	} else {
 		res.Diff = diff.Stats
+		res.Patch = diff.Patch
 		_ = os.WriteFile(filepath.Join(artifactDir, "diff.patch"), []byte(diff.Patch), 0o644)
 	}
 

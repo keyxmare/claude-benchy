@@ -21,9 +21,10 @@ func sample() Report {
 				ArtifactDir: "baseline",
 				Metrics: claude.Metrics{
 					NumTurns: 3, ToolUses: 4, TotalCostUSD: 0.0123,
-					DurationMS: 8200, Result: "Done.",
+					DurationMS: 8200, Result: "Ajout de `GET /health`.",
 				},
-				Diff: diffcap.Stats{FilesChanged: 2, Insertions: 30, Deletions: 4},
+				Diff:  diffcap.Stats{FilesChanged: 1, Insertions: 3, Deletions: 0},
+				Patch: "diff --git a/server.js b/server.js\n@@ -1,2 +1,5 @@\n context\n+added line\n-removed line",
 			},
 			{
 				Config: "strict", Run: 1, Model: "opus",

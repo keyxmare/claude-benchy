@@ -1,7 +1,7 @@
-# claude-benchy report
+# Rapport claude-benchy
 
-- **Generated:** 2026-07-15 10:00:00 UTC
-- **App:** /tmp/app
+- **Généré :** 2026-07-15 10:00:00 UTC
+- **App :** /tmp/app
 
 ## Prompt
 
@@ -9,22 +9,41 @@
 Add a /health endpoint.
 ```
 
-## Comparison
+## Synthèse
 
-| Config | Run | Model | Status | Turns | Tools | Cost | Duration | Files | +Lines | -Lines |
-|--------|-----|-------|--------|-------|-------|------|----------|-------|--------|--------|
-| baseline | 1 | sonnet | ok | 3 | 4 | $0.0123 | 8.2s | 2 | 30 | 4 |
-| strict | 1 | opus | error | 0 | 0 | $0.0000 | 0.0s | 0 | 0 | 0 |
+- Plus économique : **baseline** ($0.0123).
+- Plus rapide : **baseline** (8.2s).
+- Changements les plus étendus : **baseline** (1 fichier(s), +3/-0).
+- Runs en échec : strict.
 
-## Runs
+## Comparaison
 
-### baseline (run 1)
+| Config | Run | Modèle | Statut | Tours | Outils | Coût | Durée | Fichiers | +Lignes | -Lignes |
+|--------|-----|--------|--------|-------|--------|------|-------|----------|---------|---------|
+| baseline | 1 | sonnet | ok | 3 | 4 | $0.0123 | 8.2s | 1 | 3 | 0 |
+| strict | 1 | opus | erreur | 0 | 0 | $0.0000 | 0.0s | 0 | 0 | 0 |
 
-- **Artifacts:** baseline
-- **Result:** Done.
+## Détail par config
 
-### strict (run 1)
+### baseline (run 1) — ok
 
-- **Artifacts:** strict
-- **Error:** docker run: exit status 1
+- **Artefacts :** baseline
+- **Résultat :** Ajout de `GET /health`.
+
+```diff
+diff --git a/server.js b/server.js
+@@ -1,2 +1,5 @@
+ context
++added line
+-removed line
+```
+
+### strict (run 1) — erreur
+
+- **Artefacts :** strict
+- **Erreur :** docker run: exit status 1
+
+```diff
+
+```
 

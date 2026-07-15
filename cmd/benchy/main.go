@@ -43,6 +43,8 @@ func run(args []string) error {
 	switch args[0] {
 	case "run":
 		return cmdRun(ctx, args[1:])
+	case "report":
+		return cmdReport(args[1:])
 	case "build-image":
 		return cmdBuildImage(ctx, args[1:])
 	case "-h", "--help", "help":
@@ -90,6 +92,28 @@ func cmdRun(ctx context.Context, args []string) error {
 	return nil
 }
 
+func cmdReport(args []string) error {
+	fs := flag.NewFlagSet("report", flag.ContinueOnError)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: benchy report <dossier-de-résultats>")
+	}
+	dir := fs.Arg(0)
+
+	prompt, app := runner.BenchInfo(dir)
+	rep, err := runner.Reload(dir, app, prompt, time.Now().Format(generatedAtLayout))
+	if err != nil {
+		return err
+	}
+	if err := writeReports(dir, rep); err != nil {
+		return err
+	}
+	fmt.Printf("rapport régénéré: %s\n", filepath.Join(dir, "report.html"))
+	return nil
+}
+
 func cmdBuildImage(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("build-image", flag.ContinueOnError)
 	tag := fs.String("tag", defaultImage, "image tag to build")
@@ -133,6 +157,7 @@ func usage() {
 
 usage:
   benchy run [--image IMG] <bench.yaml>     run a benchmark
+  benchy report <results-dir>               re-render report from artifacts
   benchy build-image [--tag T] [--context D] [--claude-version V]
                                             build the sandbox image
 

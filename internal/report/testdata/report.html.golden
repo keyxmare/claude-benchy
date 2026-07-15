@@ -1,61 +1,145 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>claude-benchy report</title>
+<title>Rapport claude-benchy</title>
 <style>
-body { font-family: system-ui, sans-serif; margin: 2rem; color: #1a1a1a; }
-table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; }
-th { background: #f4f4f4; }
-pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
-.ok { color: #1a7f37; }
-.error, .claude-error { color: #cf222e; }
-code { font-family: ui-monospace, monospace; }
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --border: #d0d7de;
+  --card: #f6f8fa; --accent: #0969da;
+  --add-bg: #e6ffec; --add-fg: #116329; --del-bg: #ffebe9; --del-fg: #82071e;
+  --hunk: #0550ae; --ok: #1a7f37; --err: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --border: #30363d;
+    --card: #161b22; --accent: #4493f8;
+    --add-bg: #12261e; --add-fg: #3fb950; --del-bg: #25171c; --del-fg: #f85149;
+    --hunk: #58a6ff; --ok: #3fb950; --err: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 2rem;
+  background: var(--bg); color: var(--fg); line-height: 1.5; max-width: 1100px; margin: 0 auto; }
+h1 { margin-top: 0; }
+h2 { border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; margin-top: 2.5rem; }
+a { color: var(--accent); }
+.meta-list { color: var(--muted); font-size: 0.9rem; }
+.prompt { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 0.8rem 1rem; white-space: pre-wrap; }
+.synthesis { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent);
+  border-radius: 8px; padding: 0.6rem 1.4rem; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.92rem; }
+th, td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; }
+th { background: var(--card); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.badge { font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.82rem; }
+.badge.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 15%, transparent); }
+.badge.err { color: var(--err); background: color-mix(in srgb, var(--err) 15%, transparent); }
+.card { border: 1px solid var(--border); border-radius: 10px; margin: 1.2rem 0; overflow: hidden; }
+.card > header { background: var(--card); padding: 0.7rem 1rem; display: flex; align-items: center;
+  gap: 0.8rem; border-bottom: 1px solid var(--border); }
+.card > header h3 { margin: 0; font-size: 1.05rem; }
+.card > header .spacer { flex: 1; }
+.card > header .stat { color: var(--muted); font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+.card .body { padding: 0 1rem; }
+.result { color: var(--fg); }
+code { font-family: ui-monospace, SFMono-Regular, monospace; background: var(--card);
+  padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.9em; }
+pre.diff { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 0.8rem 1rem; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.82rem; line-height: 1.45; }
+pre.diff span { display: block; white-space: pre; }
+pre.diff .add { background: var(--add-bg); color: var(--add-fg); }
+pre.diff .del { background: var(--del-bg); color: var(--del-fg); }
+pre.diff .hunk { color: var(--hunk); }
+pre.diff .meta { color: var(--muted); }
+.empty { color: var(--muted); font-style: italic; }
 </style>
 </head>
 <body>
-<h1>claude-benchy report</h1>
-<p><strong>Generated:</strong> 2026-07-15 10:00:00 UTC<br>
-<strong>App:</strong> <code>/tmp/app</code></p>
+<h1>Rapport claude-benchy</h1>
+<p class="meta-list"><strong>Généré :</strong> 2026-07-15 10:00:00 UTC &nbsp;·&nbsp; <strong>App :</strong> <code>/tmp/app</code></p>
+
 <h2>Prompt</h2>
-<pre>Add a /health endpoint.</pre>
-<h2>Comparison</h2>
+<div class="prompt">Add a /health endpoint.</div>
+
+<h2>Synthèse</h2>
+<ul class="synthesis">
+<li>Plus économique : <strong>baseline</strong> ($0.0123).</li>
+<li>Plus rapide : <strong>baseline</strong> (8.2s).</li>
+<li>Changements les plus étendus : <strong>baseline</strong> (1 fichier(s), +3/-0).</li>
+<li>Runs en échec : strict.</li>
+</ul>
+
+<h2>Comparaison</h2>
 <table>
 <thead>
-<tr><th>Config</th><th>Run</th><th>Model</th><th>Status</th><th>Turns</th><th>Tools</th><th>Cost</th><th>Duration</th><th>Files</th><th>+Lines</th><th>-Lines</th></tr>
+<tr><th>Config</th><th>Modèle</th><th>Statut</th><th>Tours</th><th>Outils</th><th>Coût</th><th>Durée</th><th>Fichiers</th><th>+Lignes</th><th>-Lignes</th></tr>
 </thead>
 <tbody>
 <tr>
-<td>baseline</td><td>1</td><td>sonnet</td>
-<td class="ok">ok</td>
-<td>3</td><td>4</td>
-<td>$0.0123</td><td>8.2s</td>
-<td>2</td><td>30</td><td>4</td>
+<td>baseline <span class="stat">#1</span></td>
+<td>sonnet</td>
+<td><span class="badge ok">ok</span></td>
+<td class="num">3</td>
+<td class="num">4</td>
+<td class="num">$0.0123</td>
+<td class="num">8.2s</td>
+<td class="num">1</td>
+<td class="num">3</td>
+<td class="num">0</td>
 </tr>
 <tr>
-<td>strict</td><td>1</td><td>opus</td>
-<td class="error">error</td>
-<td>0</td><td>0</td>
-<td>$0.0000</td><td>0.0s</td>
-<td>0</td><td>0</td><td>0</td>
+<td>strict <span class="stat">#1</span></td>
+<td>opus</td>
+<td><span class="badge err">erreur</span></td>
+<td class="num">0</td>
+<td class="num">0</td>
+<td class="num">$0.0000</td>
+<td class="num">0.0s</td>
+<td class="num">0</td>
+<td class="num">0</td>
+<td class="num">0</td>
 </tr>
 </tbody>
 </table>
-<h2>Runs</h2>
 
-<h3>baseline (run 1)</h3>
-<ul>
-<li><strong>Artifacts:</strong> <code>baseline</code></li>
-<li><strong>Result:</strong> Done.</li>
-</ul>
+<h2>Détail par config</h2>
 
-<h3>strict (run 1)</h3>
-<ul>
-<li><strong>Artifacts:</strong> <code>strict</code></li>
-<li class="error"><strong>Error:</strong> docker run: exit status 1</li>
-</ul>
+<div class="card">
+<header>
+<h3>baseline · run 1</h3>
+<span class="badge ok">ok</span>
+<span class="spacer"></span>
+<span class="stat">8.2s · $0.0123 · 3 tours · +3/-0</span>
+</header>
+<div class="body">
+<p class="meta-list">Artefacts : <code>baseline</code></p>
+<p class="result">Ajout de <code>GET /health</code>.</p>
+<pre class="diff"><span class="meta">diff --git a/server.js b/server.js</span>
+<span class="hunk">@@ -1,2 +1,5 @@</span>
+<span class="ctx"> context</span>
+<span class="add">+added line</span>
+<span class="del">-removed line</span>
+</pre>
+</div>
+</div>
+
+<div class="card">
+<header>
+<h3>strict · run 1</h3>
+<span class="badge err">erreur</span>
+<span class="spacer"></span>
+<span class="stat">0.0s · $0.0000 · 0 tours · +0/-0</span>
+</header>
+<div class="body">
+<p class="meta-list">Artefacts : <code>strict</code></p>
+<p class="badge err">Erreur : docker run: exit status 1</p>
+<p class="empty">Aucune modification.</p>
+</div>
+</div>
 
 </body>
 </html>
