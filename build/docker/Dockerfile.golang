@@ -1,0 +1,29 @@
+# Sandbox image bundling the Go toolchain so Claude can run a Go project's own
+# quality gates (go test / vet / build) inside the sandbox. Point a bench at it
+# with `sandbox.image: claude-benchy-go:latest`.
+ARG GO_VERSION=1.25
+FROM golang:${GO_VERSION}-bookworm
+
+ARG CLAUDE_VERSION=2.1.210
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates ripgrep curl gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_VERSION}
+
+RUN useradd -m -u 1000 benchy
+
+COPY entrypoint.sh /usr/local/bin/benchy-entrypoint
+RUN chmod +x /usr/local/bin/benchy-entrypoint
+
+USER benchy
+ENV HOME=/home/benchy
+ENV CLAUDE_CONFIG_DIR=/home/benchy/.claude
+ENV GOPATH=/home/benchy/go
+ENV GOCACHE=/home/benchy/.cache/go-build
+WORKDIR /work
+
+ENTRYPOINT ["/usr/local/bin/benchy-entrypoint"]

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"path/filepath"
 	"sort"
 )
 
@@ -29,7 +30,7 @@ type RunSpec struct {
 // Runner executes and builds sandbox containers.
 type Runner interface {
 	Run(ctx context.Context, spec RunSpec, stdout, stderr io.Writer) error
-	Build(ctx context.Context, contextDir, tag string, buildArgs map[string]string) error
+	Build(ctx context.Context, contextDir, tag, dockerfile string, buildArgs map[string]string) error
 }
 
 // CLI is a Runner backed by the real docker binary.
@@ -53,9 +54,13 @@ func (c *CLI) Run(ctx context.Context, spec RunSpec, stdout, stderr io.Writer) e
 	return nil
 }
 
-// Build builds the sandbox image from contextDir.
-func (c *CLI) Build(ctx context.Context, contextDir, tag string, buildArgs map[string]string) error {
+// Build builds the sandbox image from contextDir. When dockerfile is non-empty
+// it selects a specific Dockerfile within the context.
+func (c *CLI) Build(ctx context.Context, contextDir, tag, dockerfile string, buildArgs map[string]string) error {
 	args := []string{"build", "-t", tag}
+	if dockerfile != "" {
+		args = append(args, "-f", filepath.Join(contextDir, dockerfile))
+	}
 	for _, k := range sortedKeys(buildArgs) {
 		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, buildArgs[k]))
 	}

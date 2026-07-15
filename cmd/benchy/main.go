@@ -136,6 +136,7 @@ func cmdBuildImage(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("build-image", flag.ContinueOnError)
 	tag := fs.String("tag", defaultImage, "image tag to build")
 	contextDir := fs.String("context", dockerContextDir, "docker build context")
+	dockerfile := fs.String("dockerfile", "", "Dockerfile to use (relative to context; default: Dockerfile)")
 	claudeVersion := fs.String("claude-version", "", "pin the claude CLI version")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -145,7 +146,7 @@ func cmdBuildImage(ctx context.Context, args []string) error {
 	if *claudeVersion != "" {
 		buildArgs["CLAUDE_VERSION"] = *claudeVersion
 	}
-	if err := docker.NewCLI().Build(ctx, *contextDir, *tag, buildArgs); err != nil {
+	if err := docker.NewCLI().Build(ctx, *contextDir, *tag, *dockerfile, buildArgs); err != nil {
 		return err
 	}
 	fmt.Printf("built image %s\n", *tag)

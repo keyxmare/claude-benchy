@@ -20,7 +20,9 @@ type fakeDocker struct {
 	changeFile string
 }
 
-func (f fakeDocker) Build(context.Context, string, string, map[string]string) error { return nil }
+func (f fakeDocker) Build(context.Context, string, string, string, map[string]string) error {
+	return nil
+}
 
 func (f fakeDocker) Run(_ context.Context, spec docker.RunSpec, stdout, _ io.Writer) error {
 	if f.changeFile != "" {
