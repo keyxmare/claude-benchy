@@ -1,0 +1,18 @@
+# Banc : effet d'une rule/skill de tests Go sur le projet freedy.
+# Trois configs comparées sur le même prompt.
+prompt: |
+  Écris les tests unitaires manquants pour le package internal/renderer.
+  Concentre-toi sur les fonctions pures (mise à l'échelle, formats de sortie),
+  sans toucher au GPU ni aux dépendances de plateforme.
+app: ../../../freedy
+model: sonnet
+runs: 1
+concurrency: 1
+output: ./results
+configs:
+  - name: vanilla
+    bundle: ./configs/vanilla
+  - name: rule-monolithic
+    bundle: ./configs/rule-monolithic
+  - name: skill-and-rule
+    bundle: ./configs/skill-and-rule
