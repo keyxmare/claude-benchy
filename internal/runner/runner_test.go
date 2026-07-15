@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/keyxmare/claude-benchy/internal/docker"
@@ -62,12 +64,17 @@ func TestRunEndToEndWithFake(t *testing.T) {
 	s := newSpec(t)
 	outputRoot := filepath.Join(s.Output, "ts")
 
+	var logs []string
 	rep, err := Run(context.Background(), s, outputRoot, "gen", Options{
 		Image:  "img",
 		Docker: fakeDocker{changeFile: "added.txt"},
+		Log:    func(line string) { logs = append(logs, line) },
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(logs, func(l string) bool { return strings.HasPrefix(l, "✓") }) {
+		t.Errorf("expected a completion progress line, got %v", logs)
 	}
 	if len(rep.Runs) != 1 {
 		t.Fatalf("expected 1 run, got %d", len(rep.Runs))

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/keyxmare/claude-benchy/internal/claude"
@@ -24,6 +25,15 @@ import (
 type Options struct {
 	Image  string
 	Docker docker.Runner
+	// Log, when set, receives human-readable progress lines as jobs start and
+	// finish. It may be called concurrently from several goroutines.
+	Log func(string)
+}
+
+func (o Options) log(format string, args ...any) {
+	if o.Log != nil {
+		o.Log(fmt.Sprintf(format, args...))
+	}
 }
 
 type job struct {
@@ -42,6 +52,7 @@ func Run(ctx context.Context, s *spec.Spec, outputRoot, generatedAt string, opts
 
 	jobs := expand(s)
 	results := make([]report.RunReport, len(jobs))
+	opts.log("lancement de %d run(s) sur %d config(s), concurrence %d", len(jobs), len(s.Configs), s.Concurrency)
 
 	sem := make(chan struct{}, s.Concurrency)
 	var wg sync.WaitGroup
@@ -78,9 +89,11 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 		Model:       j.config.Model,
 		ArtifactDir: rel,
 	}
+	opts.log("▶ %-18s démarrage (%s)", rel, j.config.Model)
 
 	if err := workspace.Prepare(s.App, j.config.Bundle, workspaceDir); err != nil {
 		res.Err = err.Error()
+		opts.log("✗ %-18s échec préparation: %s", rel, err)
 		return res
 	}
 
@@ -98,7 +111,26 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 		res.Diff = diff.Stats
 		_ = os.WriteFile(filepath.Join(artifactDir, "diff.patch"), []byte(diff.Patch), 0o644)
 	}
+
+	if res.Err != "" {
+		opts.log("✗ %-18s erreur: %s", rel, firstLine(res.Err))
+	} else {
+		opts.log("✓ %-18s %s · $%.4f · %d fichier(s) (+%d/-%d)", rel,
+			seconds(res.Metrics.DurationMS), res.Metrics.TotalCostUSD,
+			res.Diff.FilesChanged, res.Diff.Insertions, res.Diff.Deletions)
+	}
 	return res
+}
+
+func seconds(ms int) string {
+	return fmt.Sprintf("%.1fs", float64(ms)/1000)
+}
+
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return s[:i]
+	}
+	return s
 }
 
 func runClaude(ctx context.Context, s *spec.Spec, j job, artifactDir, workspaceDir string, opts Options) (claude.Metrics, error) {

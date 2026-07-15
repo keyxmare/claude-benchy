@@ -75,6 +75,7 @@ func cmdRun(ctx context.Context, args []string) error {
 	rep, err := runner.Run(ctx, s, outputRoot, now.Format(generatedAtLayout), runner.Options{
 		Image:  *image,
 		Docker: docker.NewCLI(),
+		Log:    func(line string) { fmt.Fprintln(os.Stderr, line) },
 	})
 	if err != nil {
 		return err
