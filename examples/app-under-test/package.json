@@ -1,0 +1,9 @@
+{
+  "name": "app-under-test",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Serveur HTTP minimal servant de cible au banc d'essai.",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
