@@ -75,12 +75,32 @@ func Run(ctx context.Context, s *spec.Spec, outputRoot, generatedAt string, opts
 	}
 	wg.Wait()
 
-	return report.Report{
+	rep := report.Report{
 		Prompt:      commonPrompt(s),
 		App:         s.App,
 		GeneratedAt: generatedAt,
 		Runs:        results,
-	}, nil
+	}
+
+	if s.Evaluate.Enabled() {
+		switch {
+		case len(s.Evaluate.Rubric) == 0:
+			opts.log("• évaluation : checks uniquement (pas de rubric à juger)")
+		case !anyOK(results):
+			opts.log("• évaluation ignorée : aucun run réussi à juger")
+		default:
+			opts.log("▶ évaluation de l'attendu (juge : %s)", s.Evaluate.Model)
+			if eval, err := judge(ctx, s, rep, outputRoot, opts); err != nil {
+				opts.log("✗ évaluation: %s", firstLine(err.Error()))
+			} else {
+				rep.Evaluation = eval
+				writeJSON(filepath.Join(outputRoot, "evaluation.json"), eval)
+				opts.log("✓ évaluation terminée")
+			}
+		}
+	}
+
+	return rep, nil
 }
 
 func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts Options) report.RunReport {
@@ -91,19 +111,62 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 	artifactDir := filepath.Join(outputRoot, rel)
 	workspaceDir := filepath.Join(artifactDir, "workspace")
 
+	_ = os.MkdirAll(artifactDir, 0o755)
+	writeJSON(filepath.Join(artifactDir, "meta.json"), runMeta{Config: j.config.Name, Run: j.run, Model: j.config.Model})
+	opts.log("▶ %-18s démarrage (%s)", rel, j.config.Model)
+
+	// A degenerate attempt — one that made no tool call or produced no diff,
+	// e.g. the model emitting a subagent call as plain text and ending — is a
+	// false success that would pollute the config's aggregates. Retry it a
+	// bounded number of times to absorb such transient flubs before recording
+	// it as a no-op.
+	var res report.RunReport
+	attempts := 1 + s.RetryCount()
+	for attempt := 1; attempt <= attempts; attempt++ {
+		res = attemptRun(ctx, s, j, rel, artifactDir, workspaceDir, opts)
+		if res.Err != "" || !res.Degenerate() {
+			break
+		}
+		if attempt < attempts {
+			opts.log("↻ %-18s run sans effet (0 outil / diff vide), relance %d/%d", rel, attempt, attempts-1)
+		}
+	}
+
+	if s.Evaluate.Enabled() && res.OK() {
+		res.Checks = runChecks(ctx, s, workspaceDir, opts)
+		writeJSON(filepath.Join(artifactDir, "checks.json"), res.Checks)
+	}
+
+	switch {
+	case res.Err != "":
+		opts.log("✗ %-18s erreur: %s", rel, firstLine(res.Err))
+	case res.Degenerate():
+		opts.log("⚠ %-18s sans effet après %d tentative(s) (écarté des classements)", rel, attempts)
+	default:
+		opts.log("✓ %-18s %s · $%.4f · %d fichier(s) (+%d/-%d)", rel,
+			seconds(res.Metrics.DurationMS), res.Metrics.TotalCostUSD,
+			res.Diff.FilesChanged, res.Diff.Insertions, res.Diff.Deletions)
+	}
+	return res
+}
+
+// attemptRun prepares a fresh workspace and runs Claude once, capturing the
+// metrics and diff. The workspace is wiped first so a retry starts from a clean
+// copy of the app rather than the previous attempt's tree.
+func attemptRun(ctx context.Context, s *spec.Spec, j job, rel, artifactDir, workspaceDir string, opts Options) report.RunReport {
 	res := report.RunReport{
 		Config:      j.config.Name,
 		Run:         j.run,
 		Model:       j.config.Model,
 		ArtifactDir: rel,
 	}
-	_ = os.MkdirAll(artifactDir, 0o755)
-	writeJSON(filepath.Join(artifactDir, "meta.json"), runMeta{Config: j.config.Name, Run: j.run, Model: j.config.Model})
-	opts.log("▶ %-18s démarrage (%s)", rel, j.config.Model)
 
-	if err := workspace.Prepare(s.App, j.config.Bundle, workspaceDir); err != nil {
+	if err := os.RemoveAll(workspaceDir); err != nil {
 		res.Err = err.Error()
-		opts.log("✗ %-18s échec préparation: %s", rel, err)
+		return res
+	}
+	if err := workspace.Prepare(s.App, j.config.Bundle, workspaceDir, s.KeepBaseConfig); err != nil {
+		res.Err = err.Error()
 		return res
 	}
 
@@ -120,17 +183,62 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 	} else {
 		res.Diff = diff.Stats
 		res.Patch = diff.Patch
+		res.Files = collectFiles(workspaceDir, diff.Patch)
 		_ = os.WriteFile(filepath.Join(artifactDir, "diff.patch"), []byte(diff.Patch), 0o644)
 	}
-
-	if res.Err != "" {
-		opts.log("✗ %-18s erreur: %s", rel, firstLine(res.Err))
-	} else {
-		opts.log("✓ %-18s %s · $%.4f · %d fichier(s) (+%d/-%d)", rel,
-			seconds(res.Metrics.DurationMS), res.Metrics.TotalCostUSD,
-			res.Diff.FilesChanged, res.Diff.Insertions, res.Diff.Deletions)
-	}
 	return res
+}
+
+// runChecks runs every declared acceptance check against a config's produced
+// workspace and returns their outcomes.
+func runChecks(ctx context.Context, s *spec.Spec, workspaceDir string, opts Options) []report.Check {
+	out := make([]report.Check, 0, len(s.Evaluate.Checks))
+	for _, c := range s.Evaluate.Checks {
+		out = append(out, runCheck(ctx, c, workspaceDir, opts))
+	}
+	return out
+}
+
+// runCheck evaluates a single check: a file check stats a path on the host, a
+// run check executes the command in the sandbox and passes when it exits 0.
+func runCheck(ctx context.Context, c spec.Check, workspaceDir string, opts Options) report.Check {
+	res := report.Check{Name: c.Name}
+	if c.File != "" {
+		if _, err := os.Stat(filepath.Join(workspaceDir, filepath.FromSlash(c.File))); err == nil {
+			res.Passed = true
+			res.Detail = "fichier présent"
+		} else {
+			res.Detail = "fichier absent"
+		}
+		return res
+	}
+
+	var buf bytes.Buffer
+	err := opts.Docker.Run(ctx, docker.RunSpec{
+		Image:      opts.Image,
+		WorkDir:    workspaceDir,
+		Entrypoint: "sh",
+		// `sh -c`, not `-lc`: a login shell sources /etc/profile which resets
+		// PATH and drops the image's toolchain (e.g. /usr/local/go/bin).
+		Args: []string{"-c", c.Run},
+	}, &buf, &buf)
+	if err == nil {
+		res.Passed = true
+		return res
+	}
+	res.Detail = oneLineTail(buf.String(), 160)
+	return res
+}
+
+// oneLineTail returns the last max characters of s, flattened to a single line,
+// so a failing command's output stays legible in the report.
+func oneLineTail(s string, max int) string {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, "\n", " / ")
+	if len(s) > max {
+		s = "…" + s[len(s)-max:]
+	}
+	return s
 }
 
 func seconds(ms int) string {
@@ -201,6 +309,15 @@ func expand(s *spec.Spec) []job {
 		}
 	}
 	return jobs
+}
+
+func anyOK(runs []report.RunReport) bool {
+	for _, r := range runs {
+		if r.OK() {
+			return true
+		}
+	}
+	return false
 }
 
 func commonPrompt(s *spec.Spec) string {

@@ -215,7 +215,7 @@ h2 { scroll-margin-top: 1.2rem; }
 </head>
 <body>
 <h1>Rapport claude-benchy</h1>
-<p class="meta-list"><strong>Généré :</strong> 2026-07-15 10:00:00 UTC &nbsp;·&nbsp; <strong>App :</strong> <code>/tmp/app</code></p>
+<p class="meta-list"><strong>Généré :</strong> 2026-07-16 22:40:00 CEST &nbsp;·&nbsp; <strong>App :</strong> <code>/tmp/app</code></p>
 
 <div class="layout">
 <main>
@@ -223,15 +223,15 @@ h2 { scroll-margin-top: 1.2rem; }
 <div class="grid-2 tight">
 <section>
 <h2 id="prompt">Prompt</h2>
-<div class="prompt">Add a /health endpoint.</div>
+<div class="prompt">Écris les tests unitaires manquants.</div>
 </section>
 <section>
 <h2 id="synthese">Synthèse</h2>
 <ul class="synthesis">
-<li>Plus économique : <strong>vanilla</strong> ($0.0123).</li>
-<li>Plus rapide : <strong>vanilla</strong> (8.2s).</li>
-<li>Changements les plus étendus : <strong>strict</strong> (1 fichier(s), +5/-0).</li>
-<li>Runs en échec : broken.</li>
+<li>Plus économique : <strong>vanilla</strong> ($0.5000).</li>
+<li>Plus rapide : <strong>vanilla</strong> (120.0s).</li>
+<li>Changements les plus étendus : <strong>vanilla</strong> (3 fichier(s), +100/-0).</li>
+<li>Runs sans effet, écartés des classements : vanilla.</li>
 </ul>
 </section>
 </div>
@@ -245,40 +245,79 @@ h2 { scroll-margin-top: 1.2rem; }
 <tr>
 <td>vanilla</td>
 <td>sonnet</td>
+<td><span class="badge warn">sans effet</span></td>
+<td class="num">—</td>
+<td class="num">1</td>
+<td class="num">0</td>
+<td class="num">$0.0700</td>
+<td class="num">8.5s</td>
+<td class="num">0</td>
+<td class="num">0</td>
+<td class="num">0</td>
+</tr>
+<tr>
+<td>vanilla · run 2</td>
+<td>sonnet</td>
 <td><span class="badge ok">ok</span></td>
 <td class="num">2/2</td>
+<td class="num">21</td>
+<td class="num">20</td>
+<td class="num">$0.5000</td>
+<td class="num">120.0s</td>
 <td class="num">3</td>
-<td class="num">4</td>
-<td class="num">$0.0123</td>
-<td class="num">8.2s</td>
-<td class="num">1</td>
-<td class="num">3</td>
+<td class="num">100</td>
 <td class="num">0</td>
 </tr>
 <tr>
-<td>strict</td>
-<td>opus</td>
+<td>vanilla · run 3</td>
+<td>sonnet</td>
 <td><span class="badge ok">ok</span></td>
 <td class="num">1/2</td>
-<td class="num">6</td>
-<td class="num">9</td>
-<td class="num">$0.0456</td>
-<td class="num">15.4s</td>
-<td class="num">1</td>
-<td class="num">5</td>
+<td class="num">23</td>
+<td class="num">22</td>
+<td class="num">$0.5000</td>
+<td class="num">120.0s</td>
+<td class="num">3</td>
+<td class="num">100</td>
 <td class="num">0</td>
 </tr>
 <tr>
-<td>broken</td>
-<td>opus</td>
-<td><span class="badge err">erreur</span></td>
-<td class="num">—</td>
+<td>skill</td>
+<td>sonnet</td>
+<td><span class="badge ok">ok</span></td>
+<td class="num">2/2</td>
+<td class="num">19</td>
+<td class="num">18</td>
+<td class="num">$0.5000</td>
+<td class="num">120.0s</td>
+<td class="num">2</td>
+<td class="num">100</td>
 <td class="num">0</td>
+</tr>
+<tr>
+<td>skill · run 2</td>
+<td>sonnet</td>
+<td><span class="badge ok">ok</span></td>
+<td class="num">2/2</td>
+<td class="num">20</td>
+<td class="num">19</td>
+<td class="num">$0.5000</td>
+<td class="num">120.0s</td>
+<td class="num">2</td>
+<td class="num">100</td>
 <td class="num">0</td>
-<td class="num">$0.0000</td>
-<td class="num">0.0s</td>
-<td class="num">0</td>
-<td class="num">0</td>
+</tr>
+<tr>
+<td>skill · run 3</td>
+<td>sonnet</td>
+<td><span class="badge ok">ok</span></td>
+<td class="num">2/2</td>
+<td class="num">22</td>
+<td class="num">21</td>
+<td class="num">$0.5000</td>
+<td class="num">120.0s</td>
+<td class="num">2</td>
+<td class="num">100</td>
 <td class="num">0</td>
 </tr>
 </tbody>
@@ -292,55 +331,57 @@ h2 { scroll-margin-top: 1.2rem; }
 <strong>Paramètres d'évaluation</strong>
 <dl>
 <dt>Juge</dt><dd><code>sonnet</code></dd>
-<dt>Critères (rubric)</dt><dd><ol><li>Expose `GET /health` renvoyant 200</li><li>Reste minimal, sans dépendance inutile</li></ol></dd>
-<dt>Vérifications</dt><dd>tests · endpoint présent</dd>
+<dt>Critères (rubric)</dt><dd><ol><li>Couvre la logique testable</li><li>Tests idiomatiques (table-driven)</li></ol></dd>
+<dt>Vérifications</dt><dd>go test · go vet</dd>
 </dl>
 <p class="params-note">Définis dans <code>bench.yaml</code> → <code>evaluate.rubric</code> / <code>evaluate.checks</code> / <code>evaluate.model</code>.</p>
 </div>
 <div class="sxs-scroll">
 <table class="matrix">
 <thead>
-<tr><th>Critère</th><th>vanilla <span class="runs">1 run(s)</span></th><th>strict <span class="runs">1 run(s)</span></th></tr>
+<tr><th>Critère</th><th>vanilla <span class="runs">2 run(s)</span></th><th>skill <span class="runs">3 run(s)</span></th></tr>
 </thead>
 <tbody>
 <tr>
-<td class="crit">Expose `GET /health` renvoyant 200</td>
-<td class="lvl ok"><span class="mark" title="respecté">✓</span><span class="obs">route et statut corrects</span></td>
-<td class="lvl ok"><span class="mark" title="respecté">✓</span><span class="obs">statut HTTP explicite</span></td>
+<td class="crit">Couvre la logique testable</td>
+<td class="lvl ok"><span class="mark" title="respecté">✓</span><span class="obs">cf. diff</span></td>
+<td class="lvl ok"><span class="mark" title="respecté">✓</span><span class="obs">cf. diff</span></td>
 </tr>
 <tr>
-<td class="crit">Reste minimal, sans dépendance inutile</td>
-<td class="lvl ok"><span class="mark" title="respecté">✓</span><span class="obs">aucune dépendance ajoutée</span></td>
-<td class="lvl ko"><span class="mark" title="non">✗</span><span class="obs">code superflu, tests en échec</span></td>
+<td class="crit">Tests idiomatiques (table-driven)</td>
+<td class="lvl ok"><span class="mark" title="respecté">✓</span><span class="obs">cf. diff</span></td>
+<td class="lvl warn"><span class="mark" title="partiel">~</span><span class="obs">cf. diff</span></td>
 </tr>
 </tbody>
 <tfoot>
-<tr><td class="crit">Score moyen</td><td class="num scorerow">100/100</td><td class="num scorerow">50/100</td></tr>
+<tr><td class="crit">Score moyen</td><td class="num scorerow">84/100 <span class="spread">(67–100)</span></td><td class="num scorerow">83/100</td></tr>
 </tfoot>
 </table>
 </div>
 
 <div class="verdicts">
 <div class="verdict">
-<h3>vanilla <span class="score">100/100</span></h3>
-<p class="verdict-line">Répond à l&#39;attendu de façon minimale.</p>
+<h3>vanilla <span class="score">84/100</span></h3>
+<p class="verdict-spread">2 runs · dispersion 67–100</p>
+<p class="verdict-line">Couverture pure et table-driven.</p>
 <ul class="checks">
-<li class="ok">tests <span class="stat">1/1 run(s)</span></li>
-<li class="ok">endpoint présent <span class="stat">1/1 run(s)</span></li>
+<li class="warn">go test <span class="stat">1/2 run(s)</span></li>
+<li class="ok">go vet <span class="stat">2/2 run(s)</span></li>
 </ul>
 </div>
 <div class="verdict">
-<h3>strict <span class="score">50/100</span></h3>
-<p class="verdict-line">Correct mais plus verbeux que nécessaire.</p>
+<h3>skill <span class="score">83/100</span></h3>
+<p class="verdict-spread">3 runs · score stable</p>
+<p class="verdict-line">Couverture pure, style perfectible.</p>
 <ul class="checks">
-<li class="ko">tests <span class="stat">0/1 run(s)</span></li>
-<li class="ok">endpoint présent <span class="stat">1/1 run(s)</span></li>
+<li class="ok">go test <span class="stat">3/3 run(s)</span></li>
+<li class="ok">go vet <span class="stat">3/3 run(s)</span></li>
 </ul>
 </div>
 </div>
 <div class="synthesis reco">
 <strong>Recommandation</strong>
-<p><strong>vanilla</strong> répond le mieux à l&#39;attendu ici ; réserver les règles aux tâches où la validation compte.</p>
+<p><strong>vanilla</strong> et <strong>skill</strong> convergent ; le run vanilla sans effet est écarté.</p>
 </div>
 
 
@@ -349,28 +390,40 @@ h2 { scroll-margin-top: 1.2rem; }
 <div class="sxs-scroll">
 <table class="matrix">
 <thead>
-<tr><th>Axe</th><th>vanilla</th><th>strict</th></tr>
+<tr><th>Axe</th><th>vanilla · run 2</th><th>vanilla · run 3</th><th>skill</th><th>skill · run 2</th><th>skill · run 3</th></tr>
 </thead>
 <tbody>
 <tr>
 <td class="crit">Coût</td>
-<td class="lvl ok"><span class="mark">✓</span><span class="obs">$0.0123</span></td>
-<td class="lvl ko"><span class="mark">✗</span><span class="obs">$0.0456</span></td>
+<td class="lvl na"><span class="obs">$0.5000</span></td>
+<td class="lvl na"><span class="obs">$0.5000</span></td>
+<td class="lvl na"><span class="obs">$0.5000</span></td>
+<td class="lvl na"><span class="obs">$0.5000</span></td>
+<td class="lvl na"><span class="obs">$0.5000</span></td>
 </tr>
 <tr>
 <td class="crit">Durée</td>
-<td class="lvl ok"><span class="mark">✓</span><span class="obs">8.2s</span></td>
-<td class="lvl ko"><span class="mark">✗</span><span class="obs">15.4s</span></td>
+<td class="lvl na"><span class="obs">120.0s</span></td>
+<td class="lvl na"><span class="obs">120.0s</span></td>
+<td class="lvl na"><span class="obs">120.0s</span></td>
+<td class="lvl na"><span class="obs">120.0s</span></td>
+<td class="lvl na"><span class="obs">120.0s</span></td>
 </tr>
 <tr>
 <td class="crit">Tours</td>
-<td class="lvl ok"><span class="mark">✓</span><span class="obs">3</span></td>
-<td class="lvl ko"><span class="mark">✗</span><span class="obs">6</span></td>
+<td class="lvl warn"><span class="mark">~</span><span class="obs">21</span></td>
+<td class="lvl ko"><span class="mark">✗</span><span class="obs">23</span></td>
+<td class="lvl ok"><span class="mark">✓</span><span class="obs">19</span></td>
+<td class="lvl warn"><span class="mark">~</span><span class="obs">20</span></td>
+<td class="lvl warn"><span class="mark">~</span><span class="obs">22</span></td>
 </tr>
 <tr>
 <td class="crit">Appels d&#39;outils</td>
-<td class="lvl ok"><span class="mark">✓</span><span class="obs">4</span></td>
-<td class="lvl ko"><span class="mark">✗</span><span class="obs">9</span></td>
+<td class="lvl warn"><span class="mark">~</span><span class="obs">20</span></td>
+<td class="lvl ko"><span class="mark">✗</span><span class="obs">22</span></td>
+<td class="lvl ok"><span class="mark">✓</span><span class="obs">18</span></td>
+<td class="lvl warn"><span class="mark">~</span><span class="obs">19</span></td>
+<td class="lvl warn"><span class="mark">~</span><span class="obs">21</span></td>
 </tr>
 </tbody>
 </table>
@@ -378,9 +431,8 @@ h2 { scroll-margin-top: 1.2rem; }
 <div class="synthesis reco">
 <strong>Recommandations</strong>
 <ul>
-<li>Meilleur compromis coût / rapidité / directivité : <strong>vanilla</strong>.</li>
-<li>Face à <strong>vanilla</strong>, les autres configurations coûtent en moyenne +271 % et sont 88 % plus lentes, pour un périmètre plus large (+2 ligne(s) en moyenne).</li>
-<li>Un seul run par configuration : les écarts peuvent relever de la variance. Répéter (<code>runs &gt; 1</code>) avant de conclure.</li>
+<li>Meilleur compromis coût / rapidité / directivité : <strong>skill</strong>.</li>
+<li>Face à <strong>vanilla · run 2</strong>, les autres configurations coûtent en moyenne +0 % et sont 0 % plus lentes, pour un périmètre de changement comparable.</li>
 </ul>
 </div>
 
@@ -397,57 +449,111 @@ h2 { scroll-margin-top: 1.2rem; }
 <div class="card">
 <header>
 <h3>vanilla</h3>
-<span class="badge ok">ok</span>
+<span class="badge warn">sans effet</span>
 <span class="spacer"></span>
-<span class="stat">8.2s · $0.0123 · 3 tours · +3/-0</span>
+<span class="stat">8.5s · $0.0700 · 1 tours · +0/-0</span>
 </header>
 <div class="body split">
 <div class="card-info">
-<p class="meta-list">Artefacts : <code>vanilla</code></p>
-<div class="result"><p>Ajout de <code>GET /health</code>.</p><p><strong>Résumé</strong> : nouvelle route renvoyant 200 avec un corps JSON minimal. Aucun test existant impacté.</p></div>
-</div>
-<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/server.js b/server.js</span>
-<span class="hunk">@@ -1,2 +1,5 @@</span>
-<span class="ctx"> context</span>
-<span class="add">+added line</span>
-<span class="del">-removed line</span>
-</pre></div>
-</div>
-</div>
-
-<div class="card">
-<header>
-<h3>strict</h3>
-<span class="badge ok">ok</span>
-<span class="spacer"></span>
-<span class="stat">15.4s · $0.0456 · 6 tours · +5/-0</span>
-</header>
-<div class="body split">
-<div class="card-info">
-<p class="meta-list">Artefacts : <code>strict</code></p>
-<div class="result"><p>Endpoint ajouté avec validation du statut.</p></div>
-</div>
-<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/server.js b/server.js</span>
-<span class="hunk">@@ -1,2 +1,6 @@</span>
-<span class="ctx"> context</span>
-<span class="add">+more lines</span>
-</pre></div>
-</div>
-</div>
-
-<div class="card">
-<header>
-<h3>broken</h3>
-<span class="badge err">erreur</span>
-<span class="spacer"></span>
-<span class="stat">0.0s · $0.0000 · 0 tours · +0/-0</span>
-</header>
-<div class="body split">
-<div class="card-info">
-<p class="meta-list">Artefacts : <code>broken</code></p>
-<p class="badge err">Erreur : docker run: exit status 1</p>
+<p class="meta-list">Artefacts : <code>vanilla/run-1</code></p>
+<div class="result"><p>Agent({description: &#34;Survey&#34;, subagent_type: &#34;Explore&#34;})</p></div>
 </div>
 <div class="card-diff"><p class="empty">Aucune modification.</p></div>
+</div>
+</div>
+
+<div class="card">
+<header>
+<h3>vanilla · run 2</h3>
+<span class="badge ok">ok</span>
+<span class="spacer"></span>
+<span class="stat">120.0s · $0.5000 · 21 tours · +100/-0</span>
+</header>
+<div class="body split">
+<div class="card-info">
+<p class="meta-list">Artefacts : <code>vanilla/run-2</code></p>
+<div class="result"><p>Tests ajoutés.</p></div>
+</div>
+<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/x_test.go b/x_test.go</span>
+<span class="hunk">@@ -0,0 +1 @@</span>
+<span class="add">+// test</span>
+</pre></div>
+</div>
+</div>
+
+<div class="card">
+<header>
+<h3>vanilla · run 3</h3>
+<span class="badge ok">ok</span>
+<span class="spacer"></span>
+<span class="stat">120.0s · $0.5000 · 23 tours · +100/-0</span>
+</header>
+<div class="body split">
+<div class="card-info">
+<p class="meta-list">Artefacts : <code>vanilla/run-3</code></p>
+<div class="result"><p>Tests ajoutés.</p></div>
+</div>
+<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/x_test.go b/x_test.go</span>
+<span class="hunk">@@ -0,0 +1 @@</span>
+<span class="add">+// test</span>
+</pre></div>
+</div>
+</div>
+
+<div class="card">
+<header>
+<h3>skill</h3>
+<span class="badge ok">ok</span>
+<span class="spacer"></span>
+<span class="stat">120.0s · $0.5000 · 19 tours · +100/-0</span>
+</header>
+<div class="body split">
+<div class="card-info">
+<p class="meta-list">Artefacts : <code>skill/run-1</code></p>
+<div class="result"><p>Tests ajoutés.</p></div>
+</div>
+<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/x_test.go b/x_test.go</span>
+<span class="hunk">@@ -0,0 +1 @@</span>
+<span class="add">+// test</span>
+</pre></div>
+</div>
+</div>
+
+<div class="card">
+<header>
+<h3>skill · run 2</h3>
+<span class="badge ok">ok</span>
+<span class="spacer"></span>
+<span class="stat">120.0s · $0.5000 · 20 tours · +100/-0</span>
+</header>
+<div class="body split">
+<div class="card-info">
+<p class="meta-list">Artefacts : <code>skill/run-2</code></p>
+<div class="result"><p>Tests ajoutés.</p></div>
+</div>
+<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/x_test.go b/x_test.go</span>
+<span class="hunk">@@ -0,0 +1 @@</span>
+<span class="add">+// test</span>
+</pre></div>
+</div>
+</div>
+
+<div class="card">
+<header>
+<h3>skill · run 3</h3>
+<span class="badge ok">ok</span>
+<span class="spacer"></span>
+<span class="stat">120.0s · $0.5000 · 22 tours · +100/-0</span>
+</header>
+<div class="body split">
+<div class="card-info">
+<p class="meta-list">Artefacts : <code>skill/run-3</code></p>
+<div class="result"><p>Tests ajoutés.</p></div>
+</div>
+<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/x_test.go b/x_test.go</span>
+<span class="hunk">@@ -0,0 +1 @@</span>
+<span class="add">+// test</span>
+</pre></div>
 </div>
 </div>
 
@@ -471,7 +577,7 @@ h2 { scroll-margin-top: 1.2rem; }
 
 
 <script>
-var BENCHY_FILES = {"labels":["vanilla","strict"],"files":{"strict":{"server.js":"const app = express();\napp.get('/health', (req, res) =\u003e {\n  res.status(200).json({ ok: true });\n});\nmodule.exports = app;\n"},"vanilla":{"server.js":"const app = express();\napp.get('/health', (_, res) =\u003e res.json({ ok: true }));\nmodule.exports = app;\n"}}};
+var BENCHY_FILES = {"labels":null,"files":{}};
 (function () {
   var data = BENCHY_FILES;
   var labels = data.labels || [];

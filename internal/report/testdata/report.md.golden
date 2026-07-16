@@ -11,24 +11,89 @@ Add a /health endpoint.
 
 ## Synthèse
 
-- Plus économique : **baseline** ($0.0123).
-- Plus rapide : **baseline** (8.2s).
-- Changements les plus étendus : **baseline** (1 fichier(s), +3/-0).
-- Runs en échec : strict.
+- Plus économique : **vanilla** ($0.0123).
+- Plus rapide : **vanilla** (8.2s).
+- Changements les plus étendus : **strict** (1 fichier(s), +5/-0).
+- Runs en échec : broken.
 
 ## Comparaison
 
-| Config | Run | Modèle | Statut | Tours | Outils | Coût | Durée | Fichiers | +Lignes | -Lignes |
-|--------|-----|--------|--------|-------|--------|------|-------|----------|---------|---------|
-| baseline | 1 | sonnet | ok | 3 | 4 | $0.0123 | 8.2s | 1 | 3 | 0 |
-| strict | 1 | opus | erreur | 0 | 0 | $0.0000 | 0.0s | 0 | 0 | 0 |
+| Config | Modèle | Statut | Checks | Tours | Outils | Coût | Durée | Fichiers | +Lignes | -Lignes |
+|--------|--------|--------|--------|-------|--------|------|-------|----------|---------|---------|
+| vanilla | sonnet | ok | 2/2 | 3 | 4 | $0.0123 | 8.2s | 1 | 3 | 0 |
+| strict | opus | ok | 1/2 | 6 | 9 | $0.0456 | 15.4s | 1 | 5 | 0 |
+| broken | opus | erreur | — | 0 | 0 | $0.0000 | 0.0s | 0 | 0 | 0 |
+
+## Évaluation de l'attendu
+
+Notée **critère par critère** par **sonnet** (sur le fond, pas le coût). Paramètres définis dans `bench.yaml` → `evaluate`.
+
+Critères (rubric) :
+
+- Expose `GET /health` renvoyant 200
+- Reste minimal, sans dépendance inutile
+
+Vérifications : tests · endpoint présent
+
+Chaque config est notée sur ses runs exploitables (les runs sans effet ou en échec sont écartés). Le score est la **moyenne** des runs, la dispersion min–max mesure la divergence.
+
+### Matrice critères × config
+
+| Critère | vanilla (1 run(s)) | strict (1 run(s)) |
+|---|---|---|
+| Expose `GET /health` renvoyant 200 | ✓ route et statut corrects | ✓ statut HTTP explicite |
+| Reste minimal, sans dépendance inutile | ✓ aucune dépendance ajoutée | ✗ code superflu, tests en échec |
+| **Score moyen** | 100/100 | 50/100 |
+
+### vanilla — 100/100 · 1 run(s)
+
+Répond à l'attendu de façon minimale.
+
+Vérifications automatiques (runs réussis) :
+
+- [x] tests — 1/1 run(s)
+- [x] endpoint présent — 1/1 run(s)
+
+### strict — 50/100 · 1 run(s)
+
+Correct mais plus verbeux que nécessaire.
+
+Vérifications automatiques (runs réussis) :
+
+- [ ] tests — 0/1 run(s)
+- [x] endpoint présent — 1/1 run(s)
+
+**Recommandation** : **vanilla** répond le mieux à l'attendu ici ; réserver les règles aux tâches où la validation compte.
+
+## Efficacité (coût & rapidité)
+
+Chaque axe comparé entre configs (✓ meilleur, ✗ moins bon).
+
+| Axe | vanilla | strict |
+|---|---|---|
+| Coût | ✓ $0.0123 | ✗ $0.0456 |
+| Durée | ✓ 8.2s | ✗ 15.4s |
+| Tours | ✓ 3 | ✗ 6 |
+| Appels d'outils | ✓ 4 | ✗ 9 |
+
+### Recommandations
+
+- Meilleur compromis coût / rapidité / directivité : **vanilla**.
+- Face à **vanilla**, les autres configurations coûtent en moyenne +271 % et sont 88 % plus lentes, pour un périmètre plus large (+2 ligne(s) en moyenne).
+- Un seul run par configuration : les écarts peuvent relever de la variance. Répéter (`runs > 1`) avant de conclure.
 
 ## Détail par config
 
-### baseline (run 1) — ok
+### vanilla — ok
 
-- **Artefacts :** baseline
-- **Résultat :** Ajout de `GET /health`.
+- **Artefacts :** vanilla
+
+**Résultat**
+
+Ajout de `GET /health`.
+
+**Résumé** : nouvelle route renvoyant
+200 avec un corps JSON minimal. Aucun test existant impacté.
 
 ```diff
 diff --git a/server.js b/server.js
@@ -38,12 +103,26 @@ diff --git a/server.js b/server.js
 -removed line
 ```
 
-### strict (run 1) — erreur
+### strict — ok
 
 - **Artefacts :** strict
+
+**Résultat**
+
+Endpoint ajouté avec validation du statut.
+
+```diff
+diff --git a/server.js b/server.js
+@@ -1,2 +1,6 @@
+ context
++more lines
+```
+
+### broken — erreur
+
+- **Artefacts :** broken
 - **Erreur :** docker run: exit status 1
 
 ```diff
 
 ```
-

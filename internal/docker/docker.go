@@ -20,11 +20,12 @@ const (
 
 // RunSpec fully describes one sandbox invocation.
 type RunSpec struct {
-	Image     string
-	WorkDir   string            // host path mounted read-write at /work
-	CredsFile string            // host credentials file mounted read-only
-	Env       map[string]string // extra environment for the container
-	Args      []string          // arguments passed to `claude`
+	Image      string
+	WorkDir    string            // host path mounted read-write at /work
+	CredsFile  string            // host credentials file mounted read-only
+	Env        map[string]string // extra environment for the container
+	Entrypoint string            // override the image entrypoint (empty: run claude)
+	Args       []string          // arguments passed to the entrypoint (or to claude)
 }
 
 // Runner executes and builds sandbox containers.
@@ -84,6 +85,9 @@ func RunArgs(spec RunSpec) []string {
 	}
 	for _, k := range sortedKeys(spec.Env) {
 		args = append(args, "-e", k+"="+spec.Env[k])
+	}
+	if spec.Entrypoint != "" {
+		args = append(args, "--entrypoint", spec.Entrypoint)
 	}
 	args = append(args, spec.Image)
 	args = append(args, spec.Args...)

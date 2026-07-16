@@ -14,6 +14,7 @@ const (
 	defaultModel       = "sonnet"
 	defaultRuns        = 1
 	defaultConcurrency = 1
+	defaultRetries     = 2
 	defaultOutput      = "results"
 	credentialsFile    = ".credentials.json"
 )
@@ -40,18 +41,64 @@ type Config struct {
 	PromptFile string `yaml:"promptFile"`
 }
 
+// Check is a deterministic acceptance check run in the sandbox against each
+// config's produced workspace. It passes when the command exits 0 (Run) or the
+// path exists (File).
+type Check struct {
+	Name string `yaml:"name"`
+	Run  string `yaml:"run"`
+	File string `yaml:"file"`
+}
+
+// Evaluate configures the post-run evaluation of how well each config met the
+// expectation: deterministic acceptance checks plus an LLM judge that scores
+// the produced changes against a rubric. It is optional; when neither rubric
+// nor checks are set, no evaluation runs.
+type Evaluate struct {
+	Model  string   `yaml:"model"`
+	Rubric []string `yaml:"rubric"`
+	Checks []Check  `yaml:"checks"`
+}
+
+// Enabled reports whether any evaluation was requested.
+func (e Evaluate) Enabled() bool {
+	return len(e.Rubric) > 0 || len(e.Checks) > 0
+}
+
+// RetryCount returns the number of extra attempts a degenerate run gets,
+// falling back to the default when unset.
+func (s *Spec) RetryCount() int {
+	if s.Retries == nil {
+		return defaultRetries
+	}
+	return *s.Retries
+}
+
 // Spec is a full benchmark definition.
 type Spec struct {
-	Prompt      string   `yaml:"prompt"`
-	PromptFile  string   `yaml:"promptFile"`
-	App         string   `yaml:"app"`
-	Model       string   `yaml:"model"`
-	Runs        int      `yaml:"runs"`
-	Concurrency int      `yaml:"concurrency"`
-	Auth        Auth     `yaml:"auth"`
-	Sandbox     Sandbox  `yaml:"sandbox"`
-	Output      string   `yaml:"output"`
-	Configs     []Config `yaml:"configs"`
+	Prompt      string `yaml:"prompt"`
+	PromptFile  string `yaml:"promptFile"`
+	App         string `yaml:"app"`
+	Model       string `yaml:"model"`
+	Runs        int    `yaml:"runs"`
+	Concurrency int    `yaml:"concurrency"`
+	// Retries is how many extra attempts a degenerate run (one that made no tool
+	// call or produced no diff) gets before being recorded as a failed run. It
+	// absorbs transient flubs — e.g. the model emitting a tool call as plain
+	// text and ending — that would otherwise pollute a config's results. A nil
+	// value means the default; an explicit 0 disables retries.
+	Retries  *int     `yaml:"retries"`
+	Auth     Auth     `yaml:"auth"`
+	Sandbox  Sandbox  `yaml:"sandbox"`
+	Output   string   `yaml:"output"`
+	Evaluate Evaluate `yaml:"evaluate"`
+	Configs  []Config `yaml:"configs"`
+
+	// KeepBaseConfig keeps the app's own Claude config as the base and layers
+	// each bundle on top of it: a colliding CLAUDE.md is appended to the app's
+	// rather than replacing it, so a bundle adds instructions instead of
+	// discarding the project's own. When false (default) a bundle file wins.
+	KeepBaseConfig bool `yaml:"keepBaseConfig"`
 
 	// CredsFile is the resolved absolute path to the credentials file to mount.
 	CredsFile string `yaml:"-"`
@@ -76,13 +123,20 @@ func Load(path string) (*Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := s.resolve(baseDir); err != nil {
-		return nil, err
-	}
-	if err := s.validate(); err != nil {
+	if err := s.Build(baseDir); err != nil {
 		return nil, err
 	}
 	return &s, nil
+}
+
+// Build resolves the spec's relative paths against baseDir and validates it in
+// place, so a Spec assembled in memory (e.g. from a web form) goes through the
+// same resolution and checks as one loaded from a file.
+func (s *Spec) Build(baseDir string) error {
+	if err := s.resolve(baseDir); err != nil {
+		return err
+	}
+	return s.validate()
 }
 
 func (s *Spec) resolve(baseDir string) error {
@@ -95,11 +149,18 @@ func (s *Spec) resolve(baseDir string) error {
 	if s.Concurrency == 0 {
 		s.Concurrency = defaultConcurrency
 	}
+	if s.Retries == nil {
+		n := defaultRetries
+		s.Retries = &n
+	}
 	if s.Output == "" {
 		s.Output = defaultOutput
 	}
 	if s.Auth.ConfigDir == "" {
 		s.Auth.ConfigDir = defaultConfigDir()
+	}
+	if s.Evaluate.Model == "" {
+		s.Evaluate.Model = s.Model
 	}
 
 	s.App = resolvePath(baseDir, s.App)
@@ -173,6 +234,18 @@ func (s *Spec) validate() error {
 	}
 	if s.Runs < 1 {
 		return fmt.Errorf("runs must be >= 1")
+	}
+	if s.Retries != nil && *s.Retries < 0 {
+		return fmt.Errorf("retries must be >= 0")
+	}
+
+	for i, c := range s.Evaluate.Checks {
+		if c.Name == "" {
+			return fmt.Errorf("evaluate.checks[%d]: name is required", i)
+		}
+		if c.Run == "" && c.File == "" {
+			return fmt.Errorf("evaluate check %q: set run or file", c.Name)
+		}
 	}
 
 	seen := make(map[string]bool, len(s.Configs))

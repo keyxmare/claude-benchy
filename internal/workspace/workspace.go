@@ -20,14 +20,18 @@ import (
 // build artifacts and other ignored files stay out of the sandbox and the
 // benchmark runs against a reproducible baseline. Otherwise the whole tree is
 // copied verbatim (minus any top-level .git directory).
-func Prepare(app, bundle, dst string) error {
+//
+// When mergeClaudeMd is set, a bundle CLAUDE.md that collides with the app's is
+// appended to it instead of replacing it, keeping the project's own config as
+// the base and layering the bundle's instructions on top.
+func Prepare(app, bundle, dst string, mergeClaudeMd bool) error {
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return err
 	}
 	if err := populateApp(app, dst); err != nil {
 		return fmt.Errorf("copy app: %w", err)
 	}
-	if err := copyTree(bundle, dst); err != nil {
+	if err := copyTree(bundle, dst, mergeClaudeMd); err != nil {
 		return fmt.Errorf("overlay bundle: %w", err)
 	}
 	if err := gitBaseline(dst); err != nil {
@@ -40,7 +44,7 @@ func populateApp(app, dst string) error {
 	if isGitRepo(app) {
 		return gitArchive(app, dst)
 	}
-	return copyTree(app, dst)
+	return copyTree(app, dst, false)
 }
 
 func isGitRepo(dir string) bool {
@@ -98,7 +102,7 @@ func gitBaseline(dir string) error {
 	return nil
 }
 
-func copyTree(src, dst string) error {
+func copyTree(src, dst string, mergeClaudeMd bool) error {
 	root := filepath.Clean(src)
 	return filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -132,9 +136,36 @@ func copyTree(src, dst string) error {
 			_ = os.Remove(target)
 			return os.Symlink(link, target)
 		default:
+			if mergeClaudeMd && d.Name() == "CLAUDE.md" && exists(target) {
+				return appendFile(path, target)
+			}
 			return copyFile(path, target)
 		}
 	})
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// appendFile appends src to dst (which already exists), separated by a blank
+// line, so a base CLAUDE.md keeps its content and the bundle's is layered on.
+func appendFile(src, dst string) error {
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	f, err := os.OpenFile(dst, os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if _, err := f.WriteString("\n\n"); err != nil {
+		return err
+	}
+	_, err = f.Write(content)
+	return err
 }
 
 func copyFile(src, dst string) error {

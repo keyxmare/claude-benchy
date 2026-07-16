@@ -1,0 +1,169 @@
+# Rapport claude-benchy
+
+- **Généré :** 2026-07-16 22:40:00 CEST
+- **App :** /tmp/app
+
+## Prompt
+
+```
+Écris les tests unitaires manquants.
+```
+
+## Synthèse
+
+- Plus économique : **vanilla** ($0.5000).
+- Plus rapide : **vanilla** (120.0s).
+- Changements les plus étendus : **vanilla** (3 fichier(s), +100/-0).
+- Runs sans effet, écartés des classements : vanilla.
+
+## Comparaison
+
+| Config | Modèle | Statut | Checks | Tours | Outils | Coût | Durée | Fichiers | +Lignes | -Lignes |
+|--------|--------|--------|--------|-------|--------|------|-------|----------|---------|---------|
+| vanilla | sonnet | sans effet | — | 1 | 0 | $0.0700 | 8.5s | 0 | 0 | 0 |
+| vanilla · run 2 | sonnet | ok | 2/2 | 21 | 20 | $0.5000 | 120.0s | 3 | 100 | 0 |
+| vanilla · run 3 | sonnet | ok | 1/2 | 23 | 22 | $0.5000 | 120.0s | 3 | 100 | 0 |
+| skill | sonnet | ok | 2/2 | 19 | 18 | $0.5000 | 120.0s | 2 | 100 | 0 |
+| skill · run 2 | sonnet | ok | 2/2 | 20 | 19 | $0.5000 | 120.0s | 2 | 100 | 0 |
+| skill · run 3 | sonnet | ok | 2/2 | 22 | 21 | $0.5000 | 120.0s | 2 | 100 | 0 |
+
+## Évaluation de l'attendu
+
+Notée **critère par critère** par **sonnet** (sur le fond, pas le coût). Paramètres définis dans `bench.yaml` → `evaluate`.
+
+Critères (rubric) :
+
+- Couvre la logique testable
+- Tests idiomatiques (table-driven)
+
+Vérifications : go test · go vet
+
+Chaque config est notée sur ses runs exploitables (les runs sans effet ou en échec sont écartés). Le score est la **moyenne** des runs, la dispersion min–max mesure la divergence.
+
+### Matrice critères × config
+
+| Critère | vanilla (2 run(s)) | skill (3 run(s)) |
+|---|---|---|
+| Couvre la logique testable | ✓ cf. diff | ✓ cf. diff |
+| Tests idiomatiques (table-driven) | ✓ cf. diff | ~ cf. diff |
+| **Score moyen** | 84/100 (67–100) | 83/100 |
+
+### vanilla — 84/100 (dispersion 67–100) · 2 run(s)
+
+Couverture pure et table-driven.
+
+Vérifications automatiques (runs réussis) :
+
+- [ ] go test — 1/2 run(s)
+- [x] go vet — 2/2 run(s)
+
+### skill — 83/100 · 3 run(s)
+
+Couverture pure, style perfectible.
+
+Vérifications automatiques (runs réussis) :
+
+- [x] go test — 3/3 run(s)
+- [x] go vet — 3/3 run(s)
+
+**Recommandation** : **vanilla** et **skill** convergent ; le run vanilla sans effet est écarté.
+
+## Efficacité (coût & rapidité)
+
+Chaque axe comparé entre configs (✓ meilleur, ✗ moins bon).
+
+| Axe | vanilla · run 2 | vanilla · run 3 | skill | skill · run 2 | skill · run 3 |
+|---|---|---|---|---|---|
+| Coût | $0.5000 | $0.5000 | $0.5000 | $0.5000 | $0.5000 |
+| Durée | 120.0s | 120.0s | 120.0s | 120.0s | 120.0s |
+| Tours | ~ 21 | ✗ 23 | ✓ 19 | ~ 20 | ~ 22 |
+| Appels d'outils | ~ 20 | ✗ 22 | ✓ 18 | ~ 19 | ~ 21 |
+
+### Recommandations
+
+- Meilleur compromis coût / rapidité / directivité : **skill**.
+- Face à **vanilla · run 2**, les autres configurations coûtent en moyenne +0 % et sont 0 % plus lentes, pour un périmètre de changement comparable.
+
+## Détail par config
+
+### vanilla — sans effet
+
+- **Artefacts :** vanilla/run-1
+
+**Résultat**
+
+Agent({description: "Survey", subagent_type: "Explore"})
+
+```diff
+
+```
+
+### vanilla · run 2 — ok
+
+- **Artefacts :** vanilla/run-2
+
+**Résultat**
+
+Tests ajoutés.
+
+```diff
+diff --git a/x_test.go b/x_test.go
+@@ -0,0 +1 @@
++// test
+```
+
+### vanilla · run 3 — ok
+
+- **Artefacts :** vanilla/run-3
+
+**Résultat**
+
+Tests ajoutés.
+
+```diff
+diff --git a/x_test.go b/x_test.go
+@@ -0,0 +1 @@
++// test
+```
+
+### skill — ok
+
+- **Artefacts :** skill/run-1
+
+**Résultat**
+
+Tests ajoutés.
+
+```diff
+diff --git a/x_test.go b/x_test.go
+@@ -0,0 +1 @@
++// test
+```
+
+### skill · run 2 — ok
+
+- **Artefacts :** skill/run-2
+
+**Résultat**
+
+Tests ajoutés.
+
+```diff
+diff --git a/x_test.go b/x_test.go
+@@ -0,0 +1 @@
++// test
+```
+
+### skill · run 3 — ok
+
+- **Artefacts :** skill/run-3
+
+**Résultat**
+
+Tests ajoutés.
+
+```diff
+diff --git a/x_test.go b/x_test.go
+@@ -0,0 +1 @@
++// test
+```

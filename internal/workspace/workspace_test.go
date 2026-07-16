@@ -18,7 +18,7 @@ func TestPrepareOverlaysAndCommits(t *testing.T) {
 	write(t, filepath.Join(bundle, "CLAUDE.md"), "new")
 	write(t, filepath.Join(bundle, ".claude", "skills", "s.md"), "skill")
 
-	if err := Prepare(app, bundle, dst); err != nil {
+	if err := Prepare(app, bundle, dst, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -56,7 +56,7 @@ func TestPrepareGitAppUsesCommittedTree(t *testing.T) {
 	write(t, filepath.Join(app, "scratch.txt"), "uncommitted")
 	write(t, filepath.Join(bundle, "CLAUDE.md"), "cfg")
 
-	if err := Prepare(app, bundle, dst); err != nil {
+	if err := Prepare(app, bundle, dst, false); err != nil {
 		t.Fatal(err)
 	}
 	if read(t, filepath.Join(dst, "tracked.go")) != "package app" {
@@ -70,6 +70,41 @@ func TestPrepareGitAppUsesCommittedTree(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dst, "scratch.txt")); err == nil {
 		t.Error("untracked file leaked into workspace")
+	}
+}
+
+func TestPrepareMergesClaudeMdWhenAsked(t *testing.T) {
+	base := t.TempDir()
+	app := filepath.Join(base, "app")
+	bundle := filepath.Join(base, "bundle")
+	dst := filepath.Join(base, "ws")
+
+	write(t, filepath.Join(app, "CLAUDE.md"), "base instructions")
+	write(t, filepath.Join(bundle, "CLAUDE.md"), "overlay instructions")
+
+	if err := Prepare(app, bundle, dst, true); err != nil {
+		t.Fatal(err)
+	}
+	got := read(t, filepath.Join(dst, "CLAUDE.md"))
+	if got != "base instructions\n\noverlay instructions" {
+		t.Errorf("CLAUDE.md should keep the base and append the overlay, got %q", got)
+	}
+}
+
+func TestPrepareMergeCreatesClaudeMdWhenAppHasNone(t *testing.T) {
+	base := t.TempDir()
+	app := filepath.Join(base, "app")
+	bundle := filepath.Join(base, "bundle")
+	dst := filepath.Join(base, "ws")
+
+	write(t, filepath.Join(app, "main.go"), "package main")
+	write(t, filepath.Join(bundle, "CLAUDE.md"), "only overlay")
+
+	if err := Prepare(app, bundle, dst, true); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, filepath.Join(dst, "CLAUDE.md")); got != "only overlay" {
+		t.Errorf("with no base CLAUDE.md the bundle's should be used verbatim, got %q", got)
 	}
 }
 

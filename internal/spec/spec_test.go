@@ -59,6 +59,35 @@ configs:
 	}
 }
 
+func TestLoadRetries(t *testing.T) {
+	cases := map[string]struct {
+		field string
+		want  int
+	}{
+		"unset defaults":  {"", defaultRetries},
+		"explicit zero":   {"retries: 0", 0},
+		"explicit number": {"retries: 3", 3},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			s, err := Load(writeSpec(t, `
+prompt: p
+app: ./app
+`+tc.field+`
+configs:
+  - name: a
+    bundle: ./cfg-a
+`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := s.RetryCount(); got != tc.want {
+				t.Errorf("RetryCount() = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestLoadPromptFile(t *testing.T) {
 	path := writeSpec(t, `
 promptFile: ./prompt.txt
@@ -116,6 +145,14 @@ configs:
   - name: a
     bundle: ./cfg-a
 `,
+		"negative retries": `
+prompt: p
+app: ./app
+retries: -1
+configs:
+  - name: a
+    bundle: ./cfg-a
+`,
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -123,6 +160,54 @@ configs:
 				t.Errorf("expected error for %q", name)
 			}
 		})
+	}
+}
+
+func TestLoadEvaluate(t *testing.T) {
+	path := writeSpec(t, `
+prompt: p
+app: ./app
+model: opus
+evaluate:
+  rubric:
+    - couvre le cas nominal
+  checks:
+    - name: tests
+      run: go test ./...
+    - name: fichier
+      file: internal/x_test.go
+configs:
+  - name: a
+    bundle: ./cfg-a
+`)
+	s, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.Evaluate.Enabled() {
+		t.Fatal("evaluate should be enabled")
+	}
+	if s.Evaluate.Model != "opus" {
+		t.Errorf("judge model should default to spec model, got %q", s.Evaluate.Model)
+	}
+	if len(s.Evaluate.Checks) != 2 || s.Evaluate.Checks[0].Run != "go test ./..." || s.Evaluate.Checks[1].File != "internal/x_test.go" {
+		t.Errorf("checks not parsed: %+v", s.Evaluate.Checks)
+	}
+}
+
+func TestLoadEvaluateInvalidCheck(t *testing.T) {
+	path := writeSpec(t, `
+prompt: p
+app: ./app
+evaluate:
+  checks:
+    - name: empty
+configs:
+  - name: a
+    bundle: ./cfg-a
+`)
+	if _, err := Load(path); err == nil {
+		t.Error("expected error for a check with neither run nor file")
 	}
 }
 

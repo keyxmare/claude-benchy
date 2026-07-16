@@ -35,3 +35,19 @@ func TestRunArgsWithoutCreds(t *testing.T) {
 		t.Fatalf("RunArgs mismatch\n got: %v\nwant: %v", got, want)
 	}
 }
+
+func TestRunArgsWithEntrypoint(t *testing.T) {
+	got := RunArgs(RunSpec{
+		Image:      "img",
+		WorkDir:    "/w",
+		Entrypoint: "sh",
+		Args:       []string{"-c", "go test ./..."},
+	})
+	want := []string{
+		"run", "--rm", "-v", "/w:/work", "-w", "/work",
+		"--entrypoint", "sh", "img", "-c", "go test ./...",
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("RunArgs mismatch\n got: %v\nwant: %v", got, want)
+	}
+}
