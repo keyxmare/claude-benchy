@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>benchy</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-root="{{.Root}}">
+<header class="topbar">
+  <span class="brand">benchy</span>
+  <span class="root" title="racine scannée">{{.Root}}</span>
+</header>
+
+<main class="layout">
+  <section class="panel">
+    <h1>Nouveau bench</h1>
+    {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+    <form method="post" action="/run" class="bench-form">
+      <label>Prompt
+        <textarea name="prompt" rows="4" placeholder="Ajoute un endpoint /health renvoyant 200.">{{.Form.Prompt}}</textarea>
+      </label>
+      <label class="muted">…ou fichier de prompt (chemin relatif à la racine)
+        <span class="path">
+          <input type="text" class="pathinput" data-pick="file" name="promptFile" value="{{.Form.PromptFile}}" placeholder="./prompts/x.md">
+          <button type="button" class="pick" aria-label="Parcourir">📁</button>
+        </span>
+      </label>
+
+      <div class="grid">
+        <label>App (dossier de test)
+          <span class="path">
+            <input type="text" class="pathinput" data-pick="dir" name="app" value="{{.Form.App}}" placeholder="./app-under-test" required>
+            <button type="button" class="pick" aria-label="Parcourir">📁</button>
+            <button type="button" class="view" aria-label="Consulter les fichiers">👁</button>
+          </span>
+        </label>
+        <label>Modèle
+          <select name="model">
+            {{$m := .Form.Model}}
+            {{range .Models}}<option value="{{.}}" {{if eq . $m}}selected{{end}}>{{.}}</option>{{end}}
+          </select>
+        </label>
+        <label>Runs
+          <input type="number" name="runs" min="1" value="{{.Form.Runs}}">
+        </label>
+        <label>Concurrence
+          <input type="number" name="concurrency" min="1" value="{{.Form.Concurrency}}">
+        </label>
+        <label title="Relances d'un run sans effet (0 appel d'outil / diff vide) avant de l'écarter. 0 pour désactiver.">Relances
+          <input type="number" name="retries" min="0" value="{{.Form.Retries}}">
+        </label>
+      </div>
+
+      <label class="check-inline">
+        <input type="checkbox" name="keepBaseConfig" {{if .Form.KeepBaseConfig}}checked{{end}}>
+        Conserver la config de base de l'app (fusionne les CLAUDE.md au lieu de les remplacer)
+      </label>
+
+      <fieldset>
+        <legend>Configurations</legend>
+        <div id="configs">
+          {{range .Form.Configs}}
+          <div class="row config-row">
+            <input type="text" name="configName" value="{{.Name}}" placeholder="nom (baseline)">
+            <span class="path">
+              <input type="text" class="pathinput" data-pick="dir" name="configBundle" value="{{.Bundle}}" placeholder="bundle (./configs/baseline)">
+              <button type="button" class="pick" aria-label="Parcourir">📁</button>
+              <button type="button" class="view" aria-label="Consulter les fichiers">👁</button>
+            </span>
+            <input type="text" name="configModel" value="{{.Model}}" placeholder="modèle (option)">
+            <input type="text" name="configPrompt" value="{{.Prompt}}" placeholder="prompt (option)">
+            <button type="button" class="remove" aria-label="retirer">×</button>
+          </div>
+          {{end}}
+        </div>
+        <button type="button" class="add" data-target="configs" data-tpl="config-row-tpl">+ config</button>
+      </fieldset>
+
+      <details class="advanced">
+        <summary>Évaluation &amp; options avancées</summary>
+        <div class="grid">
+          <label>Modèle juge
+            <input type="text" name="evalModel" value="{{.Form.EvalModel}}" placeholder="défaut : modèle du bench">
+          </label>
+          <label>Image du bac à sable
+            <input type="text" name="sandboxImage" value="{{.Form.SandboxImage}}" placeholder="claude-benchy:latest">
+          </label>
+          <label>Dossier de sortie
+            <span class="path">
+              <input type="text" class="pathinput" data-pick="dir" name="output" value="{{.Form.Output}}" placeholder="results">
+              <button type="button" class="pick" aria-label="Parcourir">📁</button>
+            </span>
+          </label>
+          <label>Creds OAuth (configDir)
+            <span class="path">
+              <input type="text" class="pathinput" data-pick="dir" name="authConfigDir" value="{{.Form.AuthConfigDir}}" placeholder="~/.claude">
+              <button type="button" class="pick" aria-label="Parcourir">📁</button>
+            </span>
+          </label>
+        </div>
+        <label>Rubric (un critère par ligne)
+          <textarea name="rubric" rows="3" placeholder="Expose GET /health renvoyant 200&#10;Modification minimale">{{.Form.Rubric}}</textarea>
+        </label>
+        <fieldset>
+          <legend>Checks déterministes</legend>
+          <div id="checks">
+            {{range .Form.Checks}}
+            <div class="row check-row">
+              <input type="text" name="checkName" value="{{.Name}}" placeholder="nom">
+              <input type="text" name="checkRun" value="{{.Run}}" placeholder="commande (exit 0)">
+              <input type="text" name="checkFile" value="{{.File}}" placeholder="fichier attendu">
+              <button type="button" class="remove" aria-label="retirer">×</button>
+            </div>
+            {{end}}
+          </div>
+          <button type="button" class="add" data-target="checks" data-tpl="check-row-tpl">+ check</button>
+        </fieldset>
+      </details>
+
+      <button type="submit" class="primary">Lancer</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h1>Historique</h1>
+    {{if .History}}
+    <ul class="history">
+      {{range .History}}
+      <li>
+        <a class="entry" href="/report?dir={{.Dir}}">
+          <span class="ts">{{.Name}}</span>
+          <span class="prompt">{{if .Prompt}}{{.Prompt}}{{else}}(prompt variable par config){{end}}</span>
+          <span class="meta">
+            {{.Count}} config(s){{if .Model}} · {{.Model}}{{end}}{{if gt .Runs 1}} · {{.Runs}} runs{{end}}{{if .HasEval}} · évaluation{{end}}
+          </span>
+          {{if .Configs}}<span class="configs">{{range $i, $c := .Configs}}{{if $i}}, {{end}}{{$c}}{{end}}</span>{{end}}
+        </a>
+      </li>
+      {{end}}
+    </ul>
+    {{else}}
+    <p class="muted">Aucun bench trouvé sous la racine. Lancez-en un pour commencer.</p>
+    {{end}}
+  </section>
+</main>
+
+<template id="config-row-tpl">
+  <div class="row config-row">
+    <input type="text" name="configName" placeholder="nom (baseline)">
+    <span class="path">
+      <input type="text" class="pathinput" data-pick="dir" name="configBundle" placeholder="bundle (./configs/baseline)">
+      <button type="button" class="pick" aria-label="Parcourir">📁</button>
+      <button type="button" class="view" aria-label="Consulter les fichiers">👁</button>
+    </span>
+    <input type="text" name="configModel" placeholder="modèle (option)">
+    <input type="text" name="configPrompt" placeholder="prompt (option)">
+    <button type="button" class="remove" aria-label="retirer">×</button>
+  </div>
+</template>
+<template id="check-row-tpl">
+  <div class="row check-row">
+    <input type="text" name="checkName" placeholder="nom">
+    <input type="text" name="checkRun" placeholder="commande (exit 0)">
+    <input type="text" name="checkFile" placeholder="fichier attendu">
+    <button type="button" class="remove" aria-label="retirer">×</button>
+  </div>
+</template>
+
+<dialog id="picker" class="picker">
+  <div class="picker-head">
+    <strong id="picker-path" class="picker-path"></strong>
+    <button type="button" id="picker-close" aria-label="Fermer">×</button>
+  </div>
+  <ul id="picker-list" class="picker-list"></ul>
+  <div class="picker-actions">
+    <button type="button" id="picker-choose" class="primary">Sélectionner ce dossier</button>
+  </div>
+</dialog>
+
+<dialog id="viewer" class="viewer">
+  <div class="picker-head">
+    <strong id="viewer-path" class="picker-path"></strong>
+    <button type="button" id="viewer-close" aria-label="Fermer">×</button>
+  </div>
+  <div class="viewer-body">
+    <ul id="viewer-list" class="picker-list"></ul>
+    <pre id="viewer-content" class="viewer-content muted">Sélectionnez un fichier…</pre>
+  </div>
+</dialog>
+
+<script>
+  var root = document.body.dataset.root;
+
+  // --- repeatable config / check rows ---------------------------------------
+  document.addEventListener('click', function (e) {
+    var add = e.target.closest('.add');
+    if (add) {
+      var tpl = document.getElementById(add.dataset.tpl);
+      document.getElementById(add.dataset.target).appendChild(tpl.content.cloneNode(true));
+      return;
+    }
+    var remove = e.target.closest('.remove');
+    if (remove) {
+      var container = remove.closest('#configs, #checks');
+      var row = remove.closest('.row');
+      if (container && container.querySelectorAll('.row').length > 1) {
+        row.remove();
+      } else {
+        row.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+      }
+    }
+  });
+
+  // --- path helpers ----------------------------------------------------------
+  function toRel(abs) {
+    if (abs === root) return '.';
+    if (abs.indexOf(root + '/') === 0) return '.' + abs.slice(root.length);
+    return abs;
+  }
+  function absStart(val) {
+    if (!val) return root;
+    if (val.charAt(0) === '/' || val.charAt(0) === '~') return val;
+    if (val.indexOf('./') === 0) val = val.slice(2);
+    return root + '/' + val;
+  }
+
+  // --- server-side file/folder picker ---------------------------------------
+  var picker = document.getElementById('picker');
+  var pickerList = document.getElementById('picker-list');
+  var pickerPath = document.getElementById('picker-path');
+  var pickerChoose = document.getElementById('picker-choose');
+  var pickTarget = null, pickMode = 'dir', pickCurrent = root;
+
+  function loadDir(path) {
+    return fetch('/browse?mode=' + pickMode + '&path=' + encodeURIComponent(path))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        pickCurrent = data.path;
+        pickerPath.textContent = data.path;
+        pickerList.innerHTML = '';
+        if (data.parent) { pickerList.appendChild(entryEl('..', true, data.parent)); }
+        (data.entries || []).forEach(function (e) {
+          var base = data.path.replace(/\/+$/, '');
+          pickerList.appendChild(entryEl(e.name, e.dir, base + '/' + e.name));
+        });
+      });
+  }
+
+  function entryEl(name, isDir, abs) {
+    var li = document.createElement('li');
+    li.className = isDir ? 'dir' : 'file';
+    li.textContent = (isDir ? '📁 ' : '📄 ') + name;
+    li.addEventListener('click', function () {
+      if (isDir) { loadDir(abs); } else { choose(abs); }
+    });
+    return li;
+  }
+
+  function choose(abs) {
+    if (pickTarget) { pickTarget.value = toRel(abs); }
+    picker.close();
+  }
+
+  pickerChoose.addEventListener('click', function () { choose(pickCurrent); });
+  document.getElementById('picker-close').addEventListener('click', function () { picker.close(); });
+
+  document.addEventListener('click', function (e) {
+    var pick = e.target.closest('.pick');
+    if (!pick) return;
+    pickTarget = pick.closest('.path').querySelector('.pathinput');
+    pickMode = pickTarget.dataset.pick || 'dir';
+    pickerChoose.style.display = pickMode === 'dir' ? '' : 'none';
+    loadDir(absStart(pickTarget.value)).then(function () { picker.showModal(); });
+  });
+
+  // --- drag & drop of a path onto a path input ------------------------------
+  // Chrome hides the absolute path of OS file drags; this only works when the
+  // drag carries a file:// URI (Linux file managers, Firefox). Falls back to
+  // the picker button otherwise.
+  document.addEventListener('dragover', function (e) {
+    if (e.target.classList && e.target.classList.contains('pathinput')) {
+      e.preventDefault();
+      e.target.classList.add('drop');
+    }
+  });
+  document.addEventListener('dragleave', function (e) {
+    if (e.target.classList && e.target.classList.contains('pathinput')) {
+      e.target.classList.remove('drop');
+    }
+  });
+  document.addEventListener('drop', function (e) {
+    if (!e.target.classList || !e.target.classList.contains('pathinput')) return;
+    e.preventDefault();
+    var input = e.target;
+    input.classList.remove('drop');
+    var uri = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (uri) {
+      uri = uri.split('\n')[0].trim();
+      if (uri.indexOf('file://') === 0) {
+        input.value = toRel(decodeURIComponent(uri.replace(/^file:\/\/[^\/]*/, '')));
+        return;
+      }
+    }
+    if (e.dataTransfer.files && e.dataTransfer.files.length) {
+      input.value = e.dataTransfer.files[0].name; // name only: no path exposed
+    }
+  });
+
+  // --- read-only file viewer (browse a config bundle / test app) ------------
+  var viewer = document.getElementById('viewer');
+  var viewerList = document.getElementById('viewer-list');
+  var viewerPath = document.getElementById('viewer-path');
+  var viewerContent = document.getElementById('viewer-content');
+
+  function viewerLoad(path) {
+    return fetch('/browse?mode=file&path=' + encodeURIComponent(path))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        viewerPath.textContent = data.path;
+        viewerList.innerHTML = '';
+        if (data.parent) { viewerList.appendChild(viewerEntry('..', true, data.parent)); }
+        (data.entries || []).forEach(function (e) {
+          var base = data.path.replace(/\/+$/, '');
+          viewerList.appendChild(viewerEntry(e.name, e.dir, base + '/' + e.name));
+        });
+      });
+  }
+
+  function viewerEntry(name, isDir, abs) {
+    var li = document.createElement('li');
+    li.className = isDir ? 'dir' : 'file';
+    li.textContent = (isDir ? '📁 ' : '📄 ') + name;
+    li.addEventListener('click', function () {
+      if (isDir) { viewerLoad(abs); } else { viewFile(abs); }
+    });
+    return li;
+  }
+
+  function viewFile(abs) {
+    viewerContent.classList.add('muted');
+    viewerContent.textContent = 'Chargement…';
+    fetch('/file?path=' + encodeURIComponent(abs))
+      .then(function (r) { return r.text(); })
+      .then(function (t) { viewerContent.classList.remove('muted'); viewerContent.textContent = t; })
+      .catch(function () { viewerContent.textContent = '(impossible de lire le fichier)'; });
+  }
+
+  document.getElementById('viewer-close').addEventListener('click', function () { viewer.close(); });
+
+  document.addEventListener('click', function (e) {
+    var view = e.target.closest('.view');
+    if (!view) return;
+    var input = view.closest('.path').querySelector('.pathinput');
+    viewerContent.textContent = 'Sélectionnez un fichier…';
+    viewerContent.classList.add('muted');
+    viewerLoad(absStart(input.value)).then(function () { viewer.showModal(); });
+  });
+</script>
+</body>
+</html>

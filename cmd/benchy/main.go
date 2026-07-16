@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -14,8 +15,11 @@ import (
 	"github.com/keyxmare/claude-benchy/internal/docker"
 	"github.com/keyxmare/claude-benchy/internal/report"
 	"github.com/keyxmare/claude-benchy/internal/runner"
+	"github.com/keyxmare/claude-benchy/internal/server"
 	"github.com/keyxmare/claude-benchy/internal/spec"
 )
+
+const defaultAddr = "127.0.0.1:8080"
 
 const (
 	defaultImage      = "claude-benchy:latest"
@@ -47,6 +51,8 @@ func run(args []string) error {
 		return cmdReport(args[1:])
 	case "build-image":
 		return cmdBuildImage(ctx, args[1:])
+	case "serve":
+		return cmdServe(ctx, args[1:])
 	case "-h", "--help", "help":
 		usage()
 		return nil
@@ -83,7 +89,13 @@ func cmdRun(ctx context.Context, args []string) error {
 		return err
 	}
 
-	if err := writeReports(outputRoot, rep); err != nil {
+	// Persist the source bench next to the results so its configuration can be
+	// reused (e.g. from the web dashboard) without re-typing it.
+	if raw, readErr := os.ReadFile(fs.Arg(0)); readErr == nil {
+		_ = os.WriteFile(filepath.Join(outputRoot, "bench.yaml"), raw, 0o644)
+	}
+
+	if err := report.Write(outputRoot, rep); err != nil {
 		return err
 	}
 
@@ -125,7 +137,7 @@ func cmdReport(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := writeReports(dir, rep); err != nil {
+	if err := report.Write(dir, rep); err != nil {
 		return err
 	}
 	fmt.Printf("rapport régénéré: %s\n", filepath.Join(dir, "report.html"))
@@ -153,22 +165,33 @@ func cmdBuildImage(ctx context.Context, args []string) error {
 	return nil
 }
 
-func writeReports(outputRoot string, rep report.Report) error {
-	md, err := os.Create(filepath.Join(outputRoot, "report.md"))
-	if err != nil {
-		return err
-	}
-	defer md.Close()
-	if err := report.WriteMarkdown(md, rep); err != nil {
+func cmdServe(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
+	addr := fs.String("addr", defaultAddr, "listen address (localhost only by default: the server can launch Docker with mounted OAuth creds)")
+	root := fs.String("root", ".", "directory scanned for past benchmarks and base for the form's relative paths")
+	image := fs.String("image", defaultImage, "default sandbox image")
+	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	html, err := os.Create(filepath.Join(outputRoot, "report.html"))
+	srv, err := server.New(*root, *image, docker.NewCLI())
 	if err != nil {
 		return err
 	}
-	defer html.Close()
-	return report.WriteHTML(html, rep)
+
+	httpSrv := &http.Server{Addr: *addr, Handler: srv.Handler()}
+	go func() {
+		<-ctx.Done()
+		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = httpSrv.Shutdown(shutdown)
+	}()
+
+	fmt.Printf("benchy serve → http://%s (racine : %s)\n", *addr, *root)
+	if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 
 func usage() {
@@ -177,6 +200,8 @@ func usage() {
 usage:
   benchy run [--image IMG] <bench.yaml>     run a benchmark
   benchy report <results-dir>               re-render report from artifacts
+  benchy serve [--addr A] [--root D] [--image IMG]
+                                            web dashboard: configure, launch and browse benchmarks
   benchy build-image [--tag T] [--context D] [--claude-version V]
                                             build the sandbox image
 

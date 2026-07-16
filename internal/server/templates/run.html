@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>benchy · run #{{.ID}}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <span class="brand"><a href="/">benchy</a></span>
+  <span class="root">run #{{.ID}}</span>
+</header>
+
+<main class="layout single">
+  <section class="panel">
+    <div class="run-head">
+      <h1>Run #{{.ID}}</h1>
+      <span id="status" class="badge {{.Status}}">{{.Status}}</span>
+      <form id="stop-form" method="post" action="/runs/{{.ID}}/stop">
+        <button type="submit" class="danger">Arrêter</button>
+      </form>
+    </div>
+
+    <pre id="log" class="console" aria-live="polite"></pre>
+    <noscript>
+      <p class="muted">JavaScript désactivé — progression non diffusée. Rechargez la page.</p>
+      <pre class="console">{{range .Logs}}{{.}}
+{{end}}</pre>
+    </noscript>
+
+    <p><a id="report-link" class="primary button" href="/report?dir={{.ReportDir}}" hidden>Voir le rapport</a>
+       <a class="button" href="/">← Retour</a></p>
+  </section>
+</main>
+
+<script>
+  var id = {{.ID}};
+  var log = document.getElementById('log');
+  var status = document.getElementById('status');
+  var es = new EventSource('/runs/' + id + '/events');
+
+  es.addEventListener('log', function (e) {
+    log.textContent += e.data + '\n';
+    log.scrollTop = log.scrollHeight;
+  });
+
+  es.addEventListener('done', function (e) {
+    es.close();
+    var state = e.data.split(':')[0];
+    status.textContent = e.data;
+    status.className = 'badge ' + state;
+    var stop = document.getElementById('stop-form');
+    if (stop) { stop.hidden = true; }
+    document.getElementById('report-link').hidden = false;
+  });
+</script>
+</body>
+</html>

@@ -1,10 +1,13 @@
 BINARY := benchy
 IMAGE := claude-benchy:latest
 
-.PHONY: build test fmt fmt-check vet lint check image clean
+.PHONY: build serve test fmt fmt-check vet lint check image clean
 
 build:
 	go build -o $(BINARY) ./cmd/benchy
+
+serve: build
+	./$(BINARY) serve
 
 test:
 	go test ./...
