@@ -10,7 +10,27 @@ en headless dans un conteneur Docker, puis compare les résultats :
 - le **diff** appliqué au code (`diff.patch`) ;
 - le **transcript** complet (`transcript.jsonl`) ;
 - les **métriques** (`result.json` : coût, tokens, tours, durée) ;
-- un **rapport agrégé** côte à côte (`report.md` + `report.html`).
+- un **rapport agrégé** (`report.md` + `report.html`).
+
+Le rapport HTML réunit, en plus du tableau de métriques :
+
+- une **évaluation de l'attendu** (si le banc la demande) : quelle config
+  répond le mieux à la tâche, jugée par un LLM selon un *rubric* et étayée par
+  des **checks déterministes** (voir `evaluate` plus bas). L'évaluation est
+  **agrégée par config** : chaque run exploitable est noté, puis la config
+  reçoit le **score moyen** de ses runs et sa **dispersion** (min–max), qui
+  mesure la divergence entre runs. Le coût passe au second plan ;
+- un **bilan d'efficacité** : points forts / faibles de chaque config (coût,
+  rapidité, directivité, périmètre traité) déduits des mesures ;
+- une **comparaison côte à côte** : on choisit deux configs et on lit, fichier
+  par fichier, le code complet produit de part et d'autre, lignes divergentes
+  surlignées.
+
+Le rapport HTML suit le design system **Gazoline** de Motoblouz (noir/blanc
+purs, accent jaune `#f1ab00`, Montserrat) et charge Montserrat/Inter depuis
+Google Fonts, avec repli sur les polices système hors-ligne. Pour éviter tout
+appel externe (RGPD, consultation hors-ligne), les polices peuvent être
+auto-hébergées / inlinées en `@font-face` — à demander si besoin.
 
 Cas d'usage : écrire une skill/rule, la décliner en variantes, et voir
 laquelle produit la meilleure modification sur une app de référence.
@@ -47,6 +67,50 @@ Chaque exécution écrit ses artefacts sous `<output>/<horodatage>/`, affiche un
 **progression live** (début/fin de chaque config : durée, coût, diff) et le
 chemin du rapport HTML en fin de run.
 
+### Interface web
+
+Pour configurer, lancer et parcourir les bancs depuis le navigateur plutôt
+qu'en éditant un fichier de banc :
+
+```sh
+./benchy serve                 # http://127.0.0.1:8080
+```
+
+- **Nouveau bench** : un formulaire couvre tous les inputs du fichier de banc
+  (prompt, app, model, runs, configs, rubric, checks…) ; « Lancer » démarre le
+  run et **diffuse la progression live**, puis affiche le lien du rapport.
+- **Historique** : la liste de tous les bancs générés sous la racine, chacun
+  ouvrant son rapport HTML re-rendu à la volée.
+- **Reprendre une config** : depuis un rapport, « Reprendre cette config »
+  rouvre le formulaire pré-rempli avec les inputs du banc — pour relire, adapter
+  et relancer. Exact quand le run porte son `bench.yaml` (runs lancés depuis
+  l'interface **et** via `benchy run`, qui le persiste désormais) ; pour un run
+  plus ancien, la config est retrouvée depuis le `bench.yaml` source situé
+  au-dessus du dossier de résultats, à défaut reconstruite au mieux.
+- **Consulter les fichiers** : les champs app et bundle offrent un bouton 👁 qui
+  ouvre une arborescence en lecture seule avec aperçu du contenu de chaque
+  fichier — pratique pour vérifier ce que contient un bundle de config ou l'app
+  de test avant de lancer.
+- **Sélection des chemins** : chaque champ de chemin (app, bundle, dossier de
+  sortie, fichier de prompt, configDir) offre un bouton 📁 qui ouvre un
+  explorateur de dossiers **côté serveur** — le navigateur ne divulgue pas les
+  chemins absolus, c'est donc benchy qui liste le système de fichiers de l'hôte.
+  Le glisser-déposer depuis un explorateur de fichiers est géré en meilleur
+  effort (il ne fonctionne que lorsque le glisser fournit une URI `file://` —
+  fréquent sous Linux/Firefox, aléatoire sous Chrome).
+
+Chaque run lancé depuis l'interface persiste aussi le `bench.yaml` soumis dans
+son dossier de résultats (reproductibilité ; rejouable via `benchy run`).
+
+Options : `--addr` (défaut `127.0.0.1:8080`), `--root` (dossier scanné pour
+l'historique et base des chemins relatifs du formulaire, défaut `.`), `--image`
+(image de bac à sable par défaut).
+
+> **Localhost par défaut.** Le serveur peut lancer des conteneurs Docker en
+> montant vos creds OAuth, et son explorateur de dossiers liste le système de
+> fichiers de l'hôte (lecture seule) : ne l'exposez pas au réseau. `--addr` ne
+> s'ouvre à l'extérieur qu'en connaissance de cause.
+
 ### Re-générer un rapport sans relancer
 
 Le rapport (`report.md` / `report.html`) se reconstruit à partir des artefacts
@@ -66,12 +130,25 @@ app: ./app-under-test          # dossier de l'app de test (git non requis)
 model: sonnet                  # défaut, surchargeable par config
 runs: 1                        # répétitions par config (variance)
 concurrency: 1                 # runs Docker en parallèle
+retries: 2                     # relances d'un run « sans effet » (voir plus bas) ; 0 pour désactiver
 auth:
   configDir: ~/.claude         # source des creds OAuth (défaut $CLAUDE_CONFIG_DIR|~/.claude)
 sandbox:
   image: claude-benchy:latest  # image du bac à sable ; pointe une image embarquant
                                # le toolchain du projet pour que Claude lance ses checks
 output: ./results
+keepBaseConfig: true           # garde le CLAUDE.md de l'app comme base et y ajoute
+                               # celui de chaque bundle (au lieu de le remplacer)
+evaluate:                      # optionnel : évaluer l'adéquation à l'attendu
+  model: sonnet                # modèle juge (défaut : model du banc)
+  rubric:                      # critères qualitatifs jugés par le LLM
+    - "Expose GET /health renvoyant 200"
+    - "Modification minimale"
+  checks:                      # vérifications déterministes dans le sandbox
+    - name: "endpoint déclaré"
+      run: "grep -q '/health' server.js"   # passe si la commande sort en 0
+    - name: "fichier de test attendu"
+      file: "server.test.js"                # passe si le fichier existe
 configs:
   - name: baseline
     bundle: ./configs/baseline
@@ -82,6 +159,42 @@ configs:
 ```
 
 Les chemins relatifs sont résolus par rapport au fichier de banc.
+
+### Évaluation de l'attendu
+
+Le bloc `evaluate` (facultatif) déclenche, **en fin de run**, une évaluation de
+la qualité des productions :
+
+- les **`checks`** sont des vérifications déterministes rejouées dans le bac à
+  sable contre le workspace de chaque config (une commande qui doit sortir en
+  `0`, ou un fichier qui doit exister) ; l'image du sandbox doit donc embarquer
+  le toolchain nécessaire (cf. `sandbox.image`) ;
+- le **`rubric`** liste les critères qualitatifs qu'un **LLM juge** applique :
+  il lit les diffs et résumés des runs **exploitables** et note chacun, centré
+  sur la tâche.
+
+Les notes par run sont ensuite **agrégées par config** : le score affiché est
+la **moyenne** des runs de la config, accompagné de la **dispersion** (min–max)
+et d'un niveau **consensuel** par critère. Comparer se fait donc config contre
+config, la variance restant lisible run par run dans le tableau de comparaison.
+
+L'évaluation consomme un appel Claude supplémentaire (le juge) ; ses diffs sont
+tronqués pour borner le coût. Le résultat est persisté (`evaluation.json`,
+`checks.json`) et réaffiché tel quel par `benchy report` — sans nouvel appel.
+
+### Runs sans effet & relances
+
+Un run peut « réussir » côté CLI sans rien produire : aucun appel d'outil, ou un
+diff vide — par exemple lorsque le modèle écrit un appel de sous-agent en texte
+au lieu de l'exécuter, et termine la session. Un tel run est un **faux succès**
+qui fausserait les moyennes (un 0/100 parasite) et les classements d'efficacité
+(un run à ~0 s / ~0 $).
+
+`benchy` détecte ces runs **sans effet** et les **relance** jusqu'à `retries`
+fois (défaut : 2) pour absorber les ratés transitoires. S'il reste sans effet,
+le run est marqué comme tel (statut « sans effet ») et **écarté** de toutes les
+agrégations (score, efficacité, juge) tout en restant visible dans le tableau de
+comparaison et le détail. Mettre `retries: 0` désactive la relance.
 
 ### Bundle de config
 
@@ -96,6 +209,15 @@ configs/strict-rules/
     └── skills/<nom>/SKILL.md  # skills projet à évaluer
 ```
 
+Par défaut, un fichier du bundle **remplace** celui de l'app à même chemin :
+un `CLAUDE.md` de bundle écrase donc celui de l'app. Avec
+`keepBaseConfig: true`, le `CLAUDE.md` de l'app est **conservé comme base** et
+celui du bundle lui est **ajouté à la suite** — on compare alors « base du
+projet + surcouche » plutôt que « surcouche seule ». Les fichiers à chemins
+distincts (`.claude/rules/*`, `.claude/skills/*`) s'ajoutent dans tous les cas.
+Dans l'interface web, l'option est la case « Conserver la config de base de
+l'app », et le bouton 👁 permet d'inspecter le contenu de l'app et des bundles.
+
 ### Arborescence des résultats
 
 ```
@@ -105,7 +227,12 @@ results/<horodatage>/
 │   ├── diff.patch             # modifications apportées à l'app
 │   ├── transcript.jsonl       # flux stream-json complet
 │   ├── result.json            # métriques (coût, tokens, tours, durée)
+│   ├── checks.json            # résultats des checks déterministes (si evaluate)
 │   └── stdout.log             # sortie d'erreur du conteneur
+├── bench.json                 # prompt + app du banc (indexation historique)
+├── bench.yaml                 # config du banc (persistée par run CLI et interface web)
+├── evaluation.json            # verdict du juge LLM (si evaluate)
+├── judge-transcript.jsonl     # transcript du juge (si evaluate)
 ├── report.md
 └── report.html
 ```

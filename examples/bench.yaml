@@ -6,7 +6,23 @@ app: ./app-under-test
 model: sonnet
 runs: 1
 concurrency: 1
+# Relances d'un run « sans effet » (0 appel d'outil ou diff vide, p. ex. le
+# modèle qui écrit un appel de sous-agent en texte et s'arrête) avant de
+# l'écarter des classements. Défaut : 2 ; 0 pour désactiver.
+retries: 2
 output: ./results
+evaluate:
+  # Critères qualitatifs jugés par le LLM (adéquation à l'attendu).
+  rubric:
+    - "Expose GET /health renvoyant le statut 200"
+    - 'Corps JSON exactement {"status":"ok"}'
+    - "Modification minimale, sans dépendance superflue"
+  # Vérifications déterministes exécutées dans le sandbox (passe si exit 0).
+  checks:
+    - name: "endpoint /health déclaré"
+      run: "grep -q '/health' server.js"
+    - name: "server.js valide"
+      run: "node --check server.js"
 configs:
   - name: baseline
     bundle: ./configs/baseline
