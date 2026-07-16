@@ -1,9 +1,8 @@
 # Banc : effet d'une rule/skill de tests Go sur le projet freedy.
-# Trois configs comparées sur le même prompt.
-prompt: |
-  Écris les tests unitaires manquants pour le package internal/renderer.
-  Concentre-toi sur les fonctions pures (mise à l'échelle, formats de sortie),
-  sans toucher au GPU ni aux dépendances de plateforme.
+# Prompt volontairement neutre (génération de tests, rien de plus) : c'est la
+# config (rule/skill) qui doit apporter la méthode, pas la consigne. Les
+# critères de qualité vivent dans evaluate.rubric.
+prompt: Écris les tests unitaires manquants de ce projet Go.
 app: ../../../freedy
 model: sonnet
 runs: 1
@@ -11,10 +10,26 @@ concurrency: 3
 sandbox:
   image: claude-benchy-go:latest
 output: ./results
+# Garde le CLAUDE.md de freedy comme base et superpose celui de chaque config
+# par-dessus, au lieu de le remplacer : on compare « base + surcouche ».
+keepBaseConfig: true
+evaluate:
+  rubric:
+    - "Couvre la logique testable (fonctions pures : calcul, mise à l'échelle, formats, transformations)"
+    - "N'introduit pas de dépendance au GPU, à X11 ni à syscall/js dans les tests"
+    - "Tests idiomatiques Go : table-driven, cas limites, déterministes"
+  # On évite go vet/test ./... en natif : les paquets GUI de freedy dépendent de
+  # GLFW/X11, absents de l'image sandbox. Natif limité à ./internal/... (logique
+  # testable) ; le projet entier n'est vérifié qu'en wasm (cible web, sans X11).
+  checks:
+    - name: "go vet (internal, natif)"
+      run: "go vet ./internal/..."
+    - name: "go vet (projet, wasm)"
+      run: "GOOS=js GOARCH=wasm go vet ./..."
+    - name: "go test (internal)"
+      run: "go test ./internal/..."
 configs:
   - name: vanilla
     bundle: ./configs/vanilla
-  - name: rule-monolithic
-    bundle: ./configs/rule-monolithic
   - name: skill-and-rule
     bundle: ./configs/skill-and-rule
