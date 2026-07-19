@@ -46,4 +46,4 @@ fonction de template), au lieu d'écrire le CSS en dur dans `htmlSource`.
   **dynamique** piloté par les données reste un `text/template`/`html/template`
   idiomatique — ce n'est pas visé.
 - Les fichiers `.css` embarqués suivent le design system Gazoline déjà en place
-  (cf. l'en-tête de `internal/report/templates.go`).
+  (cf. l'en-tête de `internal/report/static/report.css`).

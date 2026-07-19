@@ -50,8 +50,11 @@ rend l'arbre des fichiers touchés de chaque run.
 
 ## Dépendances & cibles
 
-`text/template` + `html/template` (templates embarqués dans `templates.go`),
-bibliothèque standard. Consommé par `cmd/benchy` et `internal/server`.
+`text/template` + `html/template` (templates dans `templates.go`),
+bibliothèque standard. La feuille de style et les scripts de la page vivent
+dans `static/*.{css,js}`, embarqués par `//go:embed` et **inlinés** à la
+génération (le rapport reste un fichier unique autoportant). Consommé par
+`cmd/benchy` et `internal/server`.
 
 ## Invariants & pièges
 
