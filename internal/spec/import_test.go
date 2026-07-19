@@ -101,7 +101,6 @@ configs:
 
 func TestImportLeavesEmptyAndConfigsNonSequenceUntouched(t *testing.T) {
 	t.Parallel()
-	// app empty, output absent, configs not a sequence: no path is rewritten.
 	path := writeBench(t, `app: ""
 configs: {}
 `)

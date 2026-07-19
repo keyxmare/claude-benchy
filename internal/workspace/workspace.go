@@ -117,7 +117,6 @@ func copyTree(src, dst string, mergeClaudeMd bool) error {
 		if rel == "." {
 			return nil
 		}
-		// Never copy an existing VCS directory from the source tree.
 		if d.IsDir() && (d.Name() == ".git") {
 			return filepath.SkipDir
 		}

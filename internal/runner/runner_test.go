@@ -277,7 +277,6 @@ func (f *flakyDocker) Run(_ context.Context, spec docker.RunSpec, stdout, _ io.W
 	}
 	f.claudeCalls++
 	if f.claudeCalls <= f.degenerateAttempts {
-		// No tool_use event and no file written: a degenerate, no-op run.
 		_, _ = fmt.Fprintln(stdout, `{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0.01,"result":"Agent({...}) written as text"}`)
 		return nil
 	}

@@ -275,7 +275,7 @@ configs:
 
 func TestRetryCountNilDefaults(t *testing.T) {
 	t.Parallel()
-	var s spec.Spec // Retries left nil, as before any resolution
+	var s spec.Spec
 
 	if got := s.RetryCount(); got != 2 {
 		t.Errorf("RetryCount() = %d, want %d", got, 2)

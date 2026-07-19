@@ -141,7 +141,6 @@ func TestLiveWriterSplitsAndFlushes(t *testing.T) {
 	var got []string
 	w := claude.NewLiveWriter(func(s string) { got = append(got, s) })
 
-	// A tool event split across two Writes, then a partial trailing line.
 	_, _ = w.Write([]byte(`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bas`))
 	_, _ = w.Write([]byte("h\",\"input\":{\"command\":\"ls\"}}]}}\n{\"type\":\"result\",\"subtype\":\"success\",\"num_turns\":1,\"total_cost_usd\":0.5}"))
 
