@@ -35,13 +35,26 @@ type Options struct {
 	Agent func(AgentEvent)
 }
 
+// Status is a run's lifecycle stage reported to progress listeners. Its values
+// are the vocabulary shared with the dashboard's badge styling, so they live in
+// one place rather than as scattered string literals.
+type Status string
+
+// The lifecycle stages a run can report.
+const (
+	StatusRunning    Status = "running"
+	StatusDone       Status = "done"
+	StatusFailed     Status = "failed"
+	StatusDegenerate Status = "degenerate"
+)
+
 // AgentEvent is a live update about one agent — a single config's run. Line
-// carries a rendered transcript line; Status carries a lifecycle change
-// ("running", "done", "failed", "degenerate"). Either may be empty.
+// carries a rendered transcript line; Status carries a lifecycle change. Either
+// may be empty.
 type AgentEvent struct {
 	Agent  string `json:"agent"`
 	Line   string `json:"line,omitempty"`
-	Status string `json:"status,omitempty"`
+	Status Status `json:"status,omitempty"`
 }
 
 func (o Options) log(format string, args ...any) {
@@ -137,7 +150,7 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 	_ = os.MkdirAll(artifactDir, 0o755)
 	writeJSON(filepath.Join(artifactDir, "meta.json"), runMeta{Config: j.config.Name, Run: j.run, Model: j.config.Model, Bundle: j.config.Bundle})
 	opts.log("▶ %-18s démarrage (%s)", rel, j.config.Model)
-	opts.agent(AgentEvent{Agent: rel, Status: "running"})
+	opts.agent(AgentEvent{Agent: rel, Status: StatusRunning})
 
 	// A degenerate attempt — one that made no tool call or produced no diff,
 	// e.g. the model emitting a subagent call as plain text and ending — is a
@@ -164,15 +177,15 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 	switch {
 	case res.Err != "":
 		opts.log("✗ %-18s erreur: %s", rel, firstLine(res.Err))
-		opts.agent(AgentEvent{Agent: rel, Status: "failed"})
+		opts.agent(AgentEvent{Agent: rel, Status: StatusFailed})
 	case res.Degenerate():
 		opts.log("⚠ %-18s sans effet après %d tentative(s) (écarté des classements)", rel, attempts)
-		opts.agent(AgentEvent{Agent: rel, Status: "degenerate"})
+		opts.agent(AgentEvent{Agent: rel, Status: StatusDegenerate})
 	default:
 		opts.log("✓ %-18s %s · $%.4f · %d fichier(s) (+%d/-%d)", rel,
 			seconds(res.Metrics.DurationMS), res.Metrics.TotalCostUSD,
 			res.Diff.FilesChanged, res.Diff.Insertions, res.Diff.Deletions)
-		opts.agent(AgentEvent{Agent: rel, Status: "done"})
+		opts.agent(AgentEvent{Agent: rel, Status: StatusDone})
 	}
 	return res
 }

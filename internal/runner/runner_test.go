@@ -111,13 +111,13 @@ func TestRunEndToEndWithFake(t *testing.T) {
 		t.Errorf("expected a completion progress line, got %v", logs)
 	}
 	hasAgent := func(pred func(AgentEvent) bool) bool { return slices.ContainsFunc(events, pred) }
-	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && e.Status == "running" }) {
+	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && e.Status == StatusRunning }) {
 		t.Errorf("expected a running status event for agent a, got %+v", events)
 	}
 	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && strings.HasPrefix(e.Line, "⏺ Write") }) {
 		t.Errorf("expected a rendered tool-use line for agent a, got %+v", events)
 	}
-	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && e.Status == "done" }) {
+	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && e.Status == StatusDone }) {
 		t.Errorf("expected a done status event for agent a, got %+v", events)
 	}
 	if len(rep.Runs) != 1 {

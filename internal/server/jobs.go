@@ -74,7 +74,7 @@ func (j *job) append(line string) {
 
 // agent records a per-agent update. It matches runner.Options.Agent.
 func (j *job) agent(ev runner.AgentEvent) {
-	j.record(streamEvent{Kind: "agent", Agent: ev.Agent, Line: ev.Line, Status: ev.Status})
+	j.record(streamEvent{Kind: "agent", Agent: ev.Agent, Line: ev.Line, Status: string(ev.Status)})
 }
 
 func (j *job) record(ev streamEvent) {
