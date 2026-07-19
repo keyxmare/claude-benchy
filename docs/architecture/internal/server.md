@@ -3,7 +3,7 @@ titre: internal/server — dashboard web
 public: dev
 sources:
   - internal/server/server.go
-  - internal/server/jobs.go
+  - internal/server/execution.go
   - internal/server/form.go
   - internal/server/browse.go
   - internal/server/history.go
@@ -55,9 +55,10 @@ Routes (mux `net/http` méthode+motif, Go 1.22) :
   `retries` tri-état (blanc→nil, `0`/`N` préservés). La validation de fond est
   déléguée à `spec.Build`. Le `bench.yaml` persisté est sérialisé **avant**
   `spec.Build` pour rester relatif et rejouable.
-- **Live** (`jobs.go`) : un `jobManager` réserve un dossier horodaté, lance
-  `runner.Run` en goroutine ; les événements sont diffusés via un canal
-  fermé-remplacé (`signalLocked`) ; `handleEvents` sert du SSE.
+- **Live** (`execution.go`) : un `execManager` réserve un dossier horodaté,
+  lance `runner.Run` en goroutine pour une `execution` (un banc entier, à
+  distinguer du `Job` config × run du cœur) ; les événements sont diffusés via
+  un canal fermé-remplacé (`signalLocked`) ; `handleEvents` sert du SSE.
 - **Historique** (`history.go`) : `scanHistory` reconnaît un dossier de run par la
   présence de `bench.json`.
 - **Reprise** (`reuse.go`) : trois niveaux de fidélité — `bench.yaml` propre du
@@ -79,8 +80,8 @@ Routes (mux `net/http` méthode+motif, Go 1.22) :
   localhost). Voir [ADR-0008](../decisions/0008-dashboard-stdlib-localhost.md).
 - **Jamais de commit** : `apply` et `export` laissent les changements non stagés.
 - **L'image du banc l'emporte** sur l'image par défaut du serveur (`chooseImage`).
-- L'état des jobs en mémoire est perdu au redémarrage, mais les artefacts restent
-  listables via l'historique.
+- L'état des exécutions en mémoire est perdu au redémarrage, mais les artefacts
+  restent listables via l'historique.
 
 ## Cas de test associés
 

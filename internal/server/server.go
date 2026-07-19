@@ -41,7 +41,7 @@ type Server struct {
 	root   string        // scanned for past benchmarks; base for the form's relative paths
 	image  string        // default sandbox image
 	docker docker.Runner // sandbox runner injected by the caller
-	jobs   *jobManager
+	execs  *execManager
 }
 
 // New returns a Server listing and running benchmarks under root, using image
@@ -51,7 +51,7 @@ func New(root, image string, d docker.Runner) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Server{root: abs, image: image, docker: d, jobs: newJobManager()}, nil
+	return &Server{root: abs, image: image, docker: d, execs: newExecManager()}, nil
 }
 
 // Handler builds the HTTP routing for the dashboard.
@@ -171,12 +171,12 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 		s.renderDashboard(w, form, err.Error(), http.StatusBadRequest)
 		return
 	}
-	j, err := s.jobs.start(&sp, string(raw), chooseImage(s.image, sp.Sandbox.Image), s.docker)
+	exe, err := s.execs.start(&sp, string(raw), chooseImage(s.image, sp.Sandbox.Image), s.docker)
 	if err != nil {
 		s.renderDashboard(w, form, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/runs/"+j.id, http.StatusSeeOther)
+	http.Redirect(w, r, "/runs/"+exe.id, http.StatusSeeOther)
 }
 
 // chooseImage mirrors the CLI's resolution: the bench's own sandbox.image wins
@@ -198,20 +198,20 @@ type runPageData struct {
 }
 
 func (s *Server) handleRunPage(w http.ResponseWriter, r *http.Request) {
-	j, ok := s.jobs.get(r.PathValue("id"))
+	exe, ok := s.execs.get(r.PathValue("id"))
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	events, status, _, _ := j.snapshot(0)
+	events, status, _, _ := exe.snapshot(0)
 	var logs []string
 	for _, e := range events {
 		if e.Kind == "log" {
 			logs = append(logs, e.Line)
 		}
 	}
-	rel, _ := filepath.Rel(s.root, j.outputRoot)
-	data := runPageData{ID: j.id, Status: string(status), Logs: logs, ReportDir: rel}
+	rel, _ := filepath.Rel(s.root, exe.outputRoot)
+	data := runPageData{ID: exe.id, Status: string(status), Logs: logs, ReportDir: rel}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "run.html", data); err != nil {
 		fmt.Fprintf(os.Stderr, "render run page: %v\n", err)
@@ -219,7 +219,7 @@ func (s *Server) handleRunPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
-	j, ok := s.jobs.get(r.PathValue("id"))
+	exe, ok := s.execs.get(r.PathValue("id"))
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -236,7 +236,7 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	i := 0
 	for {
-		events, status, errMsg, changed := j.snapshot(i)
+		events, status, errMsg, changed := exe.snapshot(i)
 		for _, ev := range events {
 			if ev.Kind == "agent" {
 				if payload, err := json.Marshal(ev); err == nil {
@@ -266,13 +266,13 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleStop(w http.ResponseWriter, r *http.Request) {
-	j, ok := s.jobs.get(r.PathValue("id"))
+	exe, ok := s.execs.get(r.PathValue("id"))
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	j.cancel()
-	http.Redirect(w, r, "/runs/"+j.id, http.StatusSeeOther)
+	exe.cancel()
+	http.Redirect(w, r, "/runs/"+exe.id, http.StatusSeeOther)
 }
 
 func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) {
