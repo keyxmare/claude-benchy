@@ -88,6 +88,17 @@ Point clé : un run peut « réussir » côté CLI sans rien produire (faux succ
 la détection des runs **sans effet** et leur relance/écartement des agrégations
 est une invariante métier centrale, à préserver lors des modifications du runner.
 
+## Conception
+
+Le code Go suit des principes de conception (SOLID, DRY/KISS/YAGNI/SoC/SSOT,
+LoD/TDA/CQS/CoI/PoLP, Fail Fast/BSR/RoT/PoLA/orthogonalité) explicités dans
+`.claude/rules/go-design.md` (`paths: **/*.go`, chargée par `standards-auditor`).
+Ils ne s'appliquent pas tous à fond : la rule fixe l'**ordre d'arbitrage**
+(KISS/YAGNI d'abord, Rule of Three garde-fou de DRY, OCP se mérite). Le décider
+**au plan** (SRP, OCP, ISP, DIP, SoC, CoI, YAGNI) coûte le moins cher. Le
+plancher **mesurable** (complexité, duplication, taille d'interface, gestion
+d'erreurs) est tenu par les linters de `.golangci.yml`, dans `make check`.
+
 ## Conventions de test
 
 Les tests Go de ce projet suivent une **exigence de couverture à 100 %**
