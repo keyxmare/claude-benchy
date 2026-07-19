@@ -132,7 +132,7 @@ déjà pris par le conteneur `docker compose up`).
 - **Reprendre une config** : depuis un rapport, « Reprendre cette config »
   rouvre le formulaire pré-rempli avec les inputs du banc — pour relire, adapter
   et relancer. Exact quand le run porte son `bench.yaml` (runs lancés depuis
-  l'interface **et** via `benchy run`, qui le persiste désormais) ; pour un run
+  l'interface **et** via `benchy run`, qui le persiste) ; pour un run
   plus ancien, la config est retrouvée depuis le `bench.yaml` source situé
   au-dessus du dossier de résultats, à défaut reconstruite au mieux.
 - **Détail par config** : chaque config liste le résultat et le **détail de ses

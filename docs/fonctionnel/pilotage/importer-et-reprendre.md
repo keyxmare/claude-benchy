@@ -3,7 +3,6 @@ titre: Importer et reprendre une config
 public: tous
 sources:
   - internal/server/reuse.go
-  - internal/server/import.go
   - internal/spec/import.go
   - cmd/benchy/main.go
 ---

@@ -41,7 +41,7 @@ docker compose -f compose.tools.yaml run --rm go go test ./... -cover   # couver
 ```
 
 Golden files : les rapports (`internal/report/testdata/*.golden`) se régénèrent
-avec le flag `-update` sur le test concerné.
+en passant `UPDATE_GOLDEN=1` au test concerné.
 
 ## Architecture
 
