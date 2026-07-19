@@ -59,9 +59,10 @@ lister les findings restants.
 
 - Le changement modifie la façon de lancer, tester ou déployer → README mis
   à jour.
-- Doc vivante (rules/docs.md) : pages dont le `covers` intersecte le
-  périmètre → alignées sur le code ; comportement ou module nouveau sans
-  page → la créer.
+- Doc vivante (`.claude/rules/documentation.md`) : pages dont le `sources`
+  intersecte le périmètre → alignées sur le code ; comportement ou module
+  nouveau sans page → la créer (page architecture en miroir du chemin,
+  matrice de traçabilité et index tenus à jour).
 - Invoquer `check` (suite complète). Gate rouge → corriger et relancer ;
   toujours rouge après deux passes → s'arrêter et remonter.
 
