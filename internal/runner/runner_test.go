@@ -377,3 +377,293 @@ func flagValue(args []string, flag string) string {
 	}
 	return ""
 }
+
+// funcDocker is a fully scripted sandbox: every call delegates to run, so a test
+// can model whatever behaviour it needs (success, error, malformed transcript)
+// without a dedicated struct per scenario.
+type funcDocker struct {
+	run func(ctx context.Context, spec docker.RunSpec, stdout, stderr io.Writer) error
+}
+
+func (f funcDocker) Build(context.Context, string, string, string, map[string]string) error {
+	return nil
+}
+
+func (f funcDocker) Run(ctx context.Context, spec docker.RunSpec, stdout, stderr io.Writer) error {
+	return f.run(ctx, spec, stdout, stderr)
+}
+
+// writeClaudeSuccess emits a normal Claude transcript (one tool call, a success
+// result) and, when changeFile is set, mutates the workspace so the run is not
+// degenerate.
+func writeClaudeSuccess(stdout io.Writer, workDir, changeFile string) {
+	if changeFile != "" {
+		_ = os.WriteFile(filepath.Join(workDir, changeFile), []byte("edited by claude\n"), 0o644)
+	}
+	_, _ = fmt.Fprintln(stdout, `{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write"}]}}`)
+	_, _ = fmt.Fprintln(stdout, `{"type":"result","subtype":"success","is_error":false,"num_turns":2,"total_cost_usd":0.05,"result":"ok"}`)
+}
+
+func TestRunReturnsMkdirError(t *testing.T) {
+	s := newSpec(t)
+	blocker := filepath.Join(t.TempDir(), "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// outputRoot under a regular file: MkdirAll cannot create it (ENOTDIR).
+	_, err := Run(context.Background(), s, filepath.Join(blocker, "out"), "gen", Options{Image: "img", Docker: fakeDocker{}})
+	if err == nil {
+		t.Error("expected an error when outputRoot cannot be created")
+	}
+}
+
+func TestRunMultipleRunsPerConfig(t *testing.T) {
+	s := newSpec(t)
+	s.Runs = 2
+	outputRoot := filepath.Join(s.Output, "ts")
+
+	rep, err := Run(context.Background(), s, outputRoot, "gen", Options{
+		Image:  "img",
+		Docker: fakeDocker{changeFile: "added.txt"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Runs) != 2 {
+		t.Fatalf("expected 2 runs, got %d", len(rep.Runs))
+	}
+	for _, run := range []string{"run-1", "run-2"} {
+		if _, err := os.Stat(filepath.Join(outputRoot, "a", run, "diff.patch")); err != nil {
+			t.Errorf("missing artifact for %s: %v", run, err)
+		}
+	}
+}
+
+func TestRunSkipsJudgeWhenNoRunIsOK(t *testing.T) {
+	s := newSpec(t)
+	zero := 0
+	s.Retries = &zero
+	s.Evaluate = spec.Evaluate{Model: "sonnet", Rubric: []string{"couvre le cas nominal"}}
+
+	var logs []string
+	rep, err := Run(context.Background(), s, filepath.Join(s.Output, "ts"), "gen", Options{
+		Image:  "img",
+		Docker: &flakyDocker{changeFile: "added.txt", degenerateAttempts: 5},
+		Log:    func(l string) { logs = append(logs, l) },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Evaluation != nil {
+		t.Errorf("judge must not run without an OK run, got %+v", rep.Evaluation)
+	}
+	if !slices.ContainsFunc(logs, func(l string) bool { return strings.Contains(l, "évaluation ignorée") }) {
+		t.Errorf("expected an 'évaluation ignorée' log, got %v", logs)
+	}
+}
+
+func TestRunRecordsJudgeError(t *testing.T) {
+	s := newSpec(t)
+	s.Evaluate = spec.Evaluate{Model: "sonnet", Rubric: []string{"couvre le cas nominal"}}
+
+	fake := funcDocker{run: func(_ context.Context, spec docker.RunSpec, stdout, _ io.Writer) error {
+		if spec.Entrypoint != "" {
+			return nil
+		}
+		if strings.Contains(promptArg(spec.Args), "évaluateur") {
+			return fmt.Errorf("judge boom")
+		}
+		writeClaudeSuccess(stdout, spec.WorkDir, "added.txt")
+		return nil
+	}}
+	var logs []string
+	rep, err := Run(context.Background(), s, filepath.Join(s.Output, "ts"), "gen", Options{
+		Image: "img", Docker: fake, Log: func(l string) { logs = append(logs, l) },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Evaluation != nil {
+		t.Errorf("a failing judge must leave the report without an evaluation, got %+v", rep.Evaluation)
+	}
+	if !slices.ContainsFunc(logs, func(l string) bool { return strings.HasPrefix(l, "✗ évaluation") }) {
+		t.Errorf("expected an evaluation-failure log, got %v", logs)
+	}
+}
+
+func TestAttemptRunRecordsWorkspaceRemovalError(t *testing.T) {
+	s := newSpec(t)
+	outputRoot := t.TempDir()
+	// Pre-place the config's artifact dir as a regular file so the workspace's
+	// parent is not a directory: os.RemoveAll(workspace) fails with ENOTDIR.
+	if err := os.WriteFile(filepath.Join(outputRoot, "a"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rep, err := Run(context.Background(), s, outputRoot, "gen", Options{Image: "img", Docker: fakeDocker{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Runs[0].Err == "" {
+		t.Error("expected a recorded error when the workspace cannot be wiped")
+	}
+}
+
+func TestRunRecordsClaudeRunError(t *testing.T) {
+	s := newSpec(t)
+	fake := funcDocker{run: func(_ context.Context, spec docker.RunSpec, _, _ io.Writer) error {
+		if spec.Entrypoint != "" {
+			return nil
+		}
+		return fmt.Errorf("claude boom")
+	}}
+	rep, err := Run(context.Background(), s, filepath.Join(s.Output, "ts"), "gen", Options{Image: "img", Docker: fake})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rep.Runs[0].Err, "claude boom") {
+		t.Errorf("expected the Claude run error to be recorded, got %q", rep.Runs[0].Err)
+	}
+}
+
+func TestRunRecordsTranscriptParseError(t *testing.T) {
+	s := newSpec(t)
+	// A result event whose cost is a string fails to decode: Parse errors while
+	// the Docker run itself succeeded, exercising the parse-error-without-run-error
+	// path.
+	fake := funcDocker{run: func(_ context.Context, spec docker.RunSpec, stdout, _ io.Writer) error {
+		if spec.Entrypoint != "" {
+			return nil
+		}
+		_, _ = fmt.Fprintln(stdout, `{"type":"result","total_cost_usd":"x"}`)
+		return nil
+	}}
+	rep, err := Run(context.Background(), s, filepath.Join(s.Output, "ts"), "gen", Options{Image: "img", Docker: fake})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Runs[0].Err == "" {
+		t.Error("expected a recorded error when the transcript cannot be parsed")
+	}
+}
+
+func TestRunRecordsDiffCaptureError(t *testing.T) {
+	s := newSpec(t)
+	// Claude runs fine but destroys the git baseline, so diff capture fails while
+	// the run itself carried no error.
+	fake := funcDocker{run: func(_ context.Context, spec docker.RunSpec, stdout, _ io.Writer) error {
+		if spec.Entrypoint != "" {
+			return nil
+		}
+		_ = os.RemoveAll(filepath.Join(spec.WorkDir, ".git"))
+		writeClaudeSuccess(stdout, spec.WorkDir, "added.txt")
+		return nil
+	}}
+	rep, err := Run(context.Background(), s, filepath.Join(s.Output, "ts"), "gen", Options{Image: "img", Docker: fake})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Runs[0].Err == "" {
+		t.Error("expected a recorded error when diff capture fails")
+	}
+}
+
+func TestRunClaudeTranscriptCreateError(t *testing.T) {
+	s := newSpec(t)
+	j := job{config: s.Configs[0], run: 1}
+	// artifactDir does not exist, so creating transcript.jsonl inside it fails.
+	_, err := runClaude(context.Background(), s, j, "a", filepath.Join(t.TempDir(), "missing"), t.TempDir(), Options{Image: "img"})
+	if err == nil {
+		t.Error("expected an error when the transcript file cannot be created")
+	}
+}
+
+func TestRunClaudeLogFileCreateError(t *testing.T) {
+	s := newSpec(t)
+	j := job{config: s.Configs[0], run: 1}
+	artifactDir := t.TempDir()
+	// A directory where stdout.log should be created: os.Create fails (EISDIR)
+	// after the transcript file was created successfully.
+	if err := os.Mkdir(filepath.Join(artifactDir, "stdout.log"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err := runClaude(context.Background(), s, j, "a", artifactDir, t.TempDir(), Options{Image: "img"})
+	if err == nil {
+		t.Error("expected an error when the log file cannot be created")
+	}
+}
+
+func TestRunCheckReportsMissingFile(t *testing.T) {
+	got := runCheck(context.Background(), spec.Check{Name: "artefact", File: "nope.txt"}, t.TempDir(), Options{})
+	if got.Passed {
+		t.Errorf("runCheck for a missing file = passed, want failed: %+v", got)
+	}
+	if got.Detail != "fichier absent" {
+		t.Errorf("runCheck detail = %q, want %q", got.Detail, "fichier absent")
+	}
+}
+
+func TestOneLineTail(t *testing.T) {
+	cases := map[string]struct {
+		in    string
+		limit int
+		want  string
+	}{
+		"short":      {"  hello  ", 160, "hello"},
+		"multiline":  {"a\nb\nc", 160, "a / b / c"},
+		"truncated":  {"abcdefghij", 3, "…hij"},
+		"empty":      {"   ", 160, ""},
+		"exactlimit": {"abcd", 4, "abcd"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := oneLineTail(tc.in, tc.limit); got != tc.want {
+				t.Errorf("oneLineTail(%q, %d) = %q, want %q", tc.in, tc.limit, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestFirstLine(t *testing.T) {
+	cases := map[string]struct {
+		in   string
+		want string
+	}{
+		"single": {"only line", "only line"},
+		"multi":  {"first\nsecond", "first"},
+		"empty":  {"", ""},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := firstLine(tc.in); got != tc.want {
+				t.Errorf("firstLine(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCommonPrompt(t *testing.T) {
+	cases := map[string]struct {
+		configs []spec.Config
+		want    string
+	}{
+		"none":      {nil, ""},
+		"shared":    {[]spec.Config{{Prompt: "p"}, {Prompt: "p"}}, "p"},
+		"divergent": {[]spec.Config{{Prompt: "p"}, {Prompt: "q"}}, PromptVaries},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := commonPrompt(&spec.Spec{Configs: tc.configs}); got != tc.want {
+				t.Errorf("commonPrompt(%+v) = %q, want %q", tc.configs, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestWriteJSONSkipsOnEncodeError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "out.json")
+	// A channel cannot be marshalled: Encode fails and nothing is written.
+	writeJSON(path, make(chan int))
+	if _, err := os.Stat(path); err == nil {
+		t.Error("writeJSON should not create a file when encoding fails")
+	}
+}
