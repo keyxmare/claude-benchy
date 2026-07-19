@@ -34,9 +34,9 @@ func (fakeDocker) Run(_ context.Context, spec docker.RunSpec, stdout, _ io.Write
 	return nil
 }
 
-// newTestServer returns a server rooted at a temp dir holding an app and a
-// config bundle, ready to run a benchmark through the fake sandbox.
-func newTestServer(t *testing.T) (*server.Server, string) {
+// benchRoot lays out a temp dir holding an app and a config bundle, ready for a
+// benchmark, and returns its path.
+func benchRoot(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	app := filepath.Join(root, "app")
@@ -53,7 +53,27 @@ func newTestServer(t *testing.T) (*server.Server, string) {
 	if err := os.WriteFile(filepath.Join(bundle, "CLAUDE.md"), []byte("cfg\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	return root
+}
+
+// newTestServer returns a server rooted at a temp dir holding an app and a
+// config bundle, ready to run a benchmark through the fake sandbox.
+func newTestServer(t *testing.T) (*server.Server, string) {
+	t.Helper()
+	root := benchRoot(t)
 	srv, err := server.New(root, "img", fakeDocker{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return srv, root
+}
+
+// serverWith returns a server over a fresh bench root driven by the given
+// sandbox runner, for the lifecycle branches the default fake cannot reach.
+func serverWith(t *testing.T, d docker.Runner) (*server.Server, string) {
+	t.Helper()
+	root := benchRoot(t)
+	srv, err := server.New(root, "img", d)
 	if err != nil {
 		t.Fatal(err)
 	}
