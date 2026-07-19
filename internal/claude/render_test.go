@@ -1,10 +1,10 @@
-package claude
+package claude_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/keyxmare/claude-benchy/internal/claude"
 )
 
 func TestRenderAssistantTextAndTools(t *testing.T) {
@@ -89,7 +89,7 @@ func TestRenderAssistantTextAndTools(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Render([]byte(tc.line))
+			got := claude.Render([]byte(tc.line))
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Render() mismatch (-want +got):\n%s", diff)
 			}
@@ -99,7 +99,7 @@ func TestRenderAssistantTextAndTools(t *testing.T) {
 
 func TestLiveWriterSplitsAndFlushes(t *testing.T) {
 	var got []string
-	w := NewLiveWriter(func(s string) { got = append(got, s) })
+	w := claude.NewLiveWriter(func(s string) { got = append(got, s) })
 
 	// A tool event split across two Writes, then a partial trailing line.
 	_, _ = w.Write([]byte(`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bas`))
@@ -111,11 +111,5 @@ func TestLiveWriterSplitsAndFlushes(t *testing.T) {
 	w.Flush()
 	if want := []string{"⏺ Bash(ls)", "✓ terminé · 1 tours · $0.5000"}; cmp.Diff(want, got) != "" {
 		t.Errorf("after flush =\n%q\nwant %q", got, want)
-	}
-}
-
-func TestTruncateRuneSafe(t *testing.T) {
-	if got := truncate(strings.Repeat("é", 5), 3); got != "ééé…" {
-		t.Fatalf("truncate = %q", got)
 	}
 }

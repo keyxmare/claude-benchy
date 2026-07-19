@@ -1,9 +1,11 @@
-package claude
+package claude_test
 
 import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/keyxmare/claude-benchy/internal/claude"
 )
 
 func TestParse(t *testing.T) {
@@ -13,7 +15,7 @@ func TestParse(t *testing.T) {
 	}
 	defer func() { _ = f.Close() }()
 
-	m, err := Parse(f)
+	m, err := claude.Parse(f)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +40,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestParseNoResult(t *testing.T) {
-	_, err := Parse(strings.NewReader(`{"type":"system"}` + "\n"))
+	_, err := claude.Parse(strings.NewReader(`{"type":"system"}` + "\n"))
 	if err == nil {
 		t.Fatal("expected error when no result event is present")
 	}
@@ -46,7 +48,7 @@ func TestParseNoResult(t *testing.T) {
 
 func TestParseIgnoresGarbageLines(t *testing.T) {
 	in := "not json\n" + `{"type":"result","num_turns":1,"is_error":true}` + "\n"
-	m, err := Parse(strings.NewReader(in))
+	m, err := claude.Parse(strings.NewReader(in))
 	if err != nil {
 		t.Fatal(err)
 	}

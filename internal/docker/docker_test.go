@@ -1,14 +1,14 @@
-package docker
+package docker_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/keyxmare/claude-benchy/internal/docker"
 )
 
 func TestRunArgs(t *testing.T) {
-	got := RunArgs(RunSpec{
+	got := docker.RunArgs(docker.RunSpec{
 		Image:     "img",
 		WorkDir:   "/host/work",
 		CredsFile: "/host/.credentials.json",
@@ -31,49 +31,15 @@ func TestRunArgs(t *testing.T) {
 }
 
 func TestRunArgsWithoutCreds(t *testing.T) {
-	got := RunArgs(RunSpec{Image: "img", WorkDir: "/w", Args: []string{"-p", "x"}})
+	got := docker.RunArgs(docker.RunSpec{Image: "img", WorkDir: "/w", Args: []string{"-p", "x"}})
 	want := []string{"run", "--rm", "-v", "/w:/work", "-w", "/work", "img", "-p", "x"}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("RunArgs() mismatch (-want +got):\n%s", diff)
 	}
 }
 
-func TestTailWriterKeepsLastBytesFlattened(t *testing.T) {
-	var w tailWriter
-	if _, err := w.Write([]byte("  Unable to find image\n")); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-	if _, err := w.Write([]byte("pull access denied  \n")); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-
-	got := w.oneLine()
-	want := "Unable to find image pull access denied"
-	if got != want {
-		t.Fatalf("oneLine mismatch\n got: %q\nwant: %q", got, want)
-	}
-}
-
-func TestTailWriterCapsRetainedBytes(t *testing.T) {
-	var w tailWriter
-	if _, err := w.Write([]byte(strings.Repeat("a", maxTail+100))); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-
-	if got := len(w.oneLine()); got != maxTail {
-		t.Fatalf("retained %d bytes, want %d", got, maxTail)
-	}
-}
-
-func TestTailWriterEmpty(t *testing.T) {
-	var w tailWriter
-	if got := w.oneLine(); got != "" {
-		t.Fatalf("oneLine = %q, want empty", got)
-	}
-}
-
 func TestRunArgsWithEntrypoint(t *testing.T) {
-	got := RunArgs(RunSpec{
+	got := docker.RunArgs(docker.RunSpec{
 		Image:      "img",
 		WorkDir:    "/w",
 		Entrypoint: "sh",

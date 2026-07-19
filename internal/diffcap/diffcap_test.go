@@ -1,4 +1,4 @@
-package diffcap
+package diffcap_test
 
 import (
 	"os"
@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/keyxmare/claude-benchy/internal/diffcap"
 )
 
 func initRepo(t *testing.T) string {
@@ -39,7 +41,7 @@ func TestCaptureChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := Capture(dir)
+	res, err := diffcap.Capture(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +58,7 @@ func TestCaptureChanges(t *testing.T) {
 
 func TestCaptureNoChanges(t *testing.T) {
 	dir := initRepo(t)
-	res, err := Capture(dir)
+	res, err := diffcap.Capture(dir)
 	if err != nil {
 		t.Fatal(err)
 	}

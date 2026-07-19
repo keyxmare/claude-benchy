@@ -1,10 +1,12 @@
-package workspace
+package workspace_test
 
 import (
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/keyxmare/claude-benchy/internal/workspace"
 )
 
 func TestPrepareOverlaysAndCommits(t *testing.T) {
@@ -18,7 +20,7 @@ func TestPrepareOverlaysAndCommits(t *testing.T) {
 	write(t, filepath.Join(bundle, "CLAUDE.md"), "new")
 	write(t, filepath.Join(bundle, ".claude", "skills", "s.md"), "skill")
 
-	if err := Prepare(app, bundle, dst, false); err != nil {
+	if err := workspace.Prepare(app, bundle, dst, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -56,7 +58,7 @@ func TestPrepareGitAppUsesCommittedTree(t *testing.T) {
 	write(t, filepath.Join(app, "scratch.txt"), "uncommitted")
 	write(t, filepath.Join(bundle, "CLAUDE.md"), "cfg")
 
-	if err := Prepare(app, bundle, dst, false); err != nil {
+	if err := workspace.Prepare(app, bundle, dst, false); err != nil {
 		t.Fatal(err)
 	}
 	if read(t, filepath.Join(dst, "tracked.go")) != "package app" {
@@ -82,7 +84,7 @@ func TestPrepareMergesClaudeMdWhenAsked(t *testing.T) {
 	write(t, filepath.Join(app, "CLAUDE.md"), "base instructions")
 	write(t, filepath.Join(bundle, "CLAUDE.md"), "overlay instructions")
 
-	if err := Prepare(app, bundle, dst, true); err != nil {
+	if err := workspace.Prepare(app, bundle, dst, true); err != nil {
 		t.Fatal(err)
 	}
 	got := read(t, filepath.Join(dst, "CLAUDE.md"))
@@ -100,7 +102,7 @@ func TestPrepareMergeCreatesClaudeMdWhenAppHasNone(t *testing.T) {
 	write(t, filepath.Join(app, "main.go"), "package main")
 	write(t, filepath.Join(bundle, "CLAUDE.md"), "only overlay")
 
-	if err := Prepare(app, bundle, dst, true); err != nil {
+	if err := workspace.Prepare(app, bundle, dst, true); err != nil {
 		t.Fatal(err)
 	}
 	if got := read(t, filepath.Join(dst, "CLAUDE.md")); got != "only overlay" {
