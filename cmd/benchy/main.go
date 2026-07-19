@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,44 +29,59 @@ const (
 	generatedAtLayout = "2006-01-02 15:04:05 MST"
 )
 
+// deps holds the process's injectable collaborators so every command can be
+// driven in tests without a real Docker daemon, the wall clock or the process
+// stdio. main wires the real ones; tests wire fakes.
+type deps struct {
+	docker docker.Runner
+	stdout io.Writer
+	stderr io.Writer
+	now    func() time.Time
+}
+
+// main wires the real collaborators and turns a command error into an exit
+// code. The testable logic lives in run and the cmd* functions; main itself is
+// a thin, unit-untestable shell (signal wiring, os.Exit).
 func main() {
-	if err := run(os.Args[1:]); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	d := deps{docker: docker.NewCLI(), stdout: os.Stdout, stderr: os.Stderr, now: time.Now}
+	err := run(ctx, os.Args[1:], d)
+	stop()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }
 
-func run(args []string) error {
+func run(ctx context.Context, args []string, d deps) error {
 	if len(args) == 0 {
-		usage()
+		usage(d.stderr)
 		return fmt.Errorf("a subcommand is required")
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-
 	switch args[0] {
 	case "run":
-		return cmdRun(ctx, args[1:])
+		return cmdRun(ctx, d, args[1:])
 	case "new":
-		return cmdNew(args[1:])
+		return cmdNew(d, args[1:])
 	case "report":
-		return cmdReport(args[1:])
+		return cmdReport(d, args[1:])
 	case "build-image":
-		return cmdBuildImage(ctx, args[1:])
+		return cmdBuildImage(ctx, d, args[1:])
 	case "serve":
-		return cmdServe(ctx, args[1:])
+		return cmdServe(ctx, d, args[1:])
 	case "-h", "--help", "help":
-		usage()
+		usage(d.stderr)
 		return nil
 	default:
-		usage()
+		usage(d.stderr)
 		return fmt.Errorf("unknown subcommand %q", args[0])
 	}
 }
 
-func cmdRun(ctx context.Context, args []string) error {
+func cmdRun(ctx context.Context, d deps, args []string) error {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
+	fs.SetOutput(d.stderr)
 	image := fs.String("image", defaultImage, "sandbox image to run")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -79,13 +95,13 @@ func cmdRun(ctx context.Context, args []string) error {
 		return err
 	}
 
-	now := time.Now()
+	now := d.now()
 	outputRoot := filepath.Join(s.Output, now.Format(timestampLayout))
 
 	rep, err := runner.Run(ctx, s, outputRoot, now.Format(generatedAtLayout), runner.Options{
 		Image:  resolveImage(fs, *image, s.Sandbox.Image),
-		Docker: docker.NewCLI(),
-		Log:    func(line string) { fmt.Fprintln(os.Stderr, line) },
+		Docker: d.docker,
+		Log:    func(line string) { _, _ = fmt.Fprintln(d.stderr, line) },
 	})
 	if err != nil {
 		return err
@@ -101,8 +117,8 @@ func cmdRun(ctx context.Context, args []string) error {
 		return err
 	}
 
-	fmt.Printf("done: %d run(s) → %s\n", len(rep.Runs), outputRoot)
-	fmt.Printf("report: %s\n", filepath.Join(outputRoot, "report.html"))
+	_, _ = fmt.Fprintf(d.stdout, "done: %d run(s) → %s\n", len(rep.Runs), outputRoot)
+	_, _ = fmt.Fprintf(d.stdout, "report: %s\n", filepath.Join(outputRoot, "report.html"))
 	return nil
 }
 
@@ -127,8 +143,9 @@ func resolveImage(fs *flag.FlagSet, flagValue, specImage string) string {
 // cmdNew imports an existing bench.yaml as the starting point for a new one,
 // rewriting its relative paths to absolute against the source file's directory
 // so the result is runnable from anywhere. It writes to --output or stdout.
-func cmdNew(args []string) error {
+func cmdNew(d deps, args []string) error {
 	fs := flag.NewFlagSet("new", flag.ContinueOnError)
+	fs.SetOutput(d.stderr)
 	from := fs.String("from", "", "existing bench.yaml to import")
 	out := fs.String("output", "", "write the imported bench.yaml here (default: stdout)")
 	if err := fs.Parse(args); err != nil {
@@ -140,25 +157,26 @@ func cmdNew(args []string) error {
 
 	src, err := filepath.Abs(*from)
 	if err != nil {
-		return err
+		return err // filepath.Abs only fails when the working directory is unavailable.
 	}
 	raw, err := spec.Import(src)
 	if err != nil {
 		return err
 	}
 	if *out == "" {
-		_, err := os.Stdout.Write(raw)
+		_, err := d.stdout.Write(raw)
 		return err
 	}
 	if err := os.WriteFile(*out, raw, 0o644); err != nil {
 		return err
 	}
-	fmt.Printf("imported %s → %s\n", *from, *out)
+	_, _ = fmt.Fprintf(d.stdout, "imported %s → %s\n", *from, *out)
 	return nil
 }
 
-func cmdReport(args []string) error {
+func cmdReport(d deps, args []string) error {
 	fs := flag.NewFlagSet("report", flag.ContinueOnError)
+	fs.SetOutput(d.stderr)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -168,19 +186,20 @@ func cmdReport(args []string) error {
 	dir := fs.Arg(0)
 
 	prompt, app := runner.BenchInfo(dir)
-	rep, err := runner.Reload(dir, app, prompt, time.Now().Format(generatedAtLayout))
+	rep, err := runner.Reload(dir, app, prompt, d.now().Format(generatedAtLayout))
 	if err != nil {
 		return err
 	}
 	if err := report.Write(dir, rep); err != nil {
 		return err
 	}
-	fmt.Printf("rapport régénéré: %s\n", filepath.Join(dir, "report.html"))
+	_, _ = fmt.Fprintf(d.stdout, "rapport régénéré: %s\n", filepath.Join(dir, "report.html"))
 	return nil
 }
 
-func cmdBuildImage(ctx context.Context, args []string) error {
+func cmdBuildImage(ctx context.Context, d deps, args []string) error {
 	fs := flag.NewFlagSet("build-image", flag.ContinueOnError)
+	fs.SetOutput(d.stderr)
 	tag := fs.String("tag", defaultImage, "image tag to build")
 	contextDir := fs.String("context", dockerContextDir, "docker build context")
 	dockerfile := fs.String("dockerfile", "", "Dockerfile to use (relative to context; default: Dockerfile)")
@@ -193,15 +212,16 @@ func cmdBuildImage(ctx context.Context, args []string) error {
 	if *claudeVersion != "" {
 		buildArgs["CLAUDE_VERSION"] = *claudeVersion
 	}
-	if err := docker.NewCLI().Build(ctx, *contextDir, *tag, *dockerfile, buildArgs); err != nil {
+	if err := d.docker.Build(ctx, *contextDir, *tag, *dockerfile, buildArgs); err != nil {
 		return err
 	}
-	fmt.Printf("built image %s\n", *tag)
+	_, _ = fmt.Fprintf(d.stdout, "built image %s\n", *tag)
 	return nil
 }
 
-func cmdServe(ctx context.Context, args []string) error {
+func cmdServe(ctx context.Context, d deps, args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
+	fs.SetOutput(d.stderr)
 	addr := fs.String("addr", defaultAddr, "listen address (localhost only by default: the server can launch Docker with mounted OAuth creds)")
 	root := fs.String("root", ".", "directory scanned for past benchmarks and base for the form's relative paths")
 	image := fs.String("image", defaultImage, "default sandbox image")
@@ -209,9 +229,9 @@ func cmdServe(ctx context.Context, args []string) error {
 		return err
 	}
 
-	srv, err := server.New(*root, *image, docker.NewCLI())
+	srv, err := server.New(*root, *image, d.docker)
 	if err != nil {
-		return err
+		return err // server.New only fails when the working directory is unavailable.
 	}
 
 	httpSrv := &http.Server{Addr: *addr, Handler: srv.Handler()}
@@ -222,15 +242,15 @@ func cmdServe(ctx context.Context, args []string) error {
 		_ = httpSrv.Shutdown(shutdown)
 	}()
 
-	fmt.Printf("benchy serve → http://%s (racine : %s)\n", *addr, *root)
+	_, _ = fmt.Fprintf(d.stdout, "benchy serve → http://%s (racine : %s)\n", *addr, *root)
 	if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
 	}
 	return nil
 }
 
-func usage() {
-	fmt.Fprint(os.Stderr, `benchy — benchmark Claude Code configurations
+func usage(w io.Writer) {
+	_, _ = fmt.Fprint(w, `benchy — benchmark Claude Code configurations
 
 usage:
   benchy run [--image IMG] <bench.yaml>     run a benchmark
