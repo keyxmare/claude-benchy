@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"html"
 	"net/http"
 	"net/url"
 	"os"
@@ -84,6 +83,13 @@ func gitApply(app, patch string) (string, error) {
 	return strings.ReplaceAll(strings.TrimSpace(out.String()), "\n", " / "), err
 }
 
+// applyData feeds the apply-outcome template.
+type applyData struct {
+	Title   string
+	Message string
+	Back    string
+}
+
 // writeApplyPage renders the outcome of an apply with a link back to the report.
 func writeApplyPage(w http.ResponseWriter, code int, backDir, message string, ok bool) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -92,9 +98,8 @@ func writeApplyPage(w http.ResponseWriter, code int, backDir, message string, ok
 	if ok {
 		title = "Modifications appliquées"
 	}
-	back := "/report?dir=" + url.QueryEscape(backDir)
-	_, _ = fmt.Fprintf(w, `<!doctype html><html lang="fr"><head><meta charset="utf-8">`+
-		`<title>%s</title></head><body style="font-family:system-ui;max-width:44rem;margin:3rem auto;padding:0 1rem">`+
-		`<h1>%s</h1><p>%s</p><p><a href="%s">← Retour au rapport</a></p></body></html>`,
-		html.EscapeString(title), html.EscapeString(title), html.EscapeString(message), back)
+	data := applyData{Title: title, Message: message, Back: "/report?dir=" + url.QueryEscape(backDir)}
+	if err := tmpl.ExecuteTemplate(w, "apply.html", data); err != nil {
+		fmt.Fprintf(os.Stderr, "render apply page: %v\n", err)
+	}
 }
