@@ -1,0 +1,4 @@
+# hadolint config (run via Docker in `make check`).
+ignored:
+  - DL3008  # pinning apt versions across Debian point releases is brittle here
+failure-threshold: warning

@@ -6,6 +6,7 @@ IMAGE_GO := claude-benchy-go:latest
 TOOLS := docker compose -f compose.tools.yaml
 GO := $(TOOLS) run --rm go
 LINT := $(TOOLS) run --rm lint
+RUN := $(TOOLS) run --rm
 
 # Host platform for the `build` target so ./benchy runs natively without a Go
 # toolchain installed. arm64 keeps its name; x86_64 maps to Go's amd64.
@@ -17,7 +18,7 @@ GOARCH := $(if $(filter x86_64,$(HOST_ARCH)),amd64,$(HOST_ARCH))
 KEYCHAIN_SERVICE := Claude Code-credentials
 CLAUDE_DIR ?= $(HOME)/.claude
 
-.PHONY: build serve serve-watch up down logs creds test fmt fmt-check vet lint check check-fast image image-go clean
+.PHONY: build serve serve-watch up down logs creds test fmt fmt-check vet lint shellcheck shfmt hadolint yamllint markdownlint check check-fast image image-go clean
 
 build:
 	$(GO) env GOOS=$(HOST_OS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -o $(BINARY) ./cmd/benchy
@@ -72,9 +73,25 @@ vet:
 lint:
 	$(LINT) golangci-lint run
 
-check: fmt-check vet lint test
+# Non-Go linters/formatters, all via Docker (pinned in compose.tools.yaml).
+shellcheck:
+	$(RUN) shellcheck scripts/serve-watch.sh build/docker/entrypoint.sh
 
-check-fast: fmt-check vet lint
+shfmt:
+	$(RUN) shfmt -d scripts build/docker
+
+hadolint:
+	$(RUN) hadolint Dockerfile build/docker/Dockerfile build/docker/Dockerfile.golang
+
+yamllint:
+	$(RUN) yamllint .
+
+markdownlint:
+	$(RUN) markdownlint
+
+check: check-fast test
+
+check-fast: fmt-check vet lint shellcheck shfmt hadolint yamllint markdownlint
 
 image:
 	docker build -t $(IMAGE) build/docker

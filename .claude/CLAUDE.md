@@ -17,7 +17,8 @@ Le toolchain Go tourne **exclusivement dans Docker** (`compose.tools.yaml`) —
 aucun runtime Go ni `golangci-lint` sur l'hôte. Passer par le Makefile :
 
 ```sh
-make check          # gate complet : fmt-check → vet → lint → test
+make check          # gate complet : Go (fmt-check → vet → lint) + shellcheck,
+                    # shfmt, hadolint, yamllint, markdownlint → test
 make check-fast     # idem sans les tests (contrat du hook commit-gate)
 make test           # go test ./...
 make fmt            # gofmt -w .
@@ -25,6 +26,11 @@ make build          # binaire ./benchy natif à la plateforme hôte
 make image          # image sandbox claude-benchy:latest
 make image-go       # variante embarquant le toolchain Go (bancs à checks go test)
 ```
+
+Linters/formatters non-Go, tous via Docker (images épinglées dans
+`compose.tools.yaml`, configs `.yamllint` / `.hadolint.yaml` /
+`.markdownlint-cli2.jsonc`) : `make shellcheck shfmt hadolint yamllint
+markdownlint`. Ils tournent dans `check` / `check-fast`.
 
 Lancer un seul test (le toolchain Go passe par `make`/Docker, mais on peut aussi
 invoquer directement le conteneur `go`) :

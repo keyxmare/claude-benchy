@@ -5,8 +5,8 @@ set -e
 
 mkdir -p "$CLAUDE_CONFIG_DIR"
 if [ -f /benchy/creds/.credentials.json ]; then
-    cp /benchy/creds/.credentials.json "$CLAUDE_CONFIG_DIR/.credentials.json"
-    chmod 600 "$CLAUDE_CONFIG_DIR/.credentials.json"
+	cp /benchy/creds/.credentials.json "$CLAUDE_CONFIG_DIR/.credentials.json"
+	chmod 600 "$CLAUDE_CONFIG_DIR/.credentials.json"
 fi
 
 exec claude "$@"

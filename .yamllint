@@ -1,0 +1,9 @@
+# yamllint config (run via Docker in `make check`). Relax the rules that do not
+# fit this project: no `---` document markers, and long single-line values in
+# bench.yaml (rubric strings) that cannot be wrapped without changing meaning.
+extends: default
+rules:
+  document-start: disable
+  line-length: disable
+ignore: |
+  benches/*/results/

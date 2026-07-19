@@ -1,0 +1,11 @@
+{
+  // markdownlint config (run via Docker in `make check`). Line length is not
+  // enforced: prose is hand-wrapped and occasionally exceeds 80. Config
+  // bundles and generated results under benches/ are fixtures, not docs.
+  "config": {
+    "default": true,
+    "MD013": false
+  },
+  "globs": ["README.md", ".claude/**/*.md"],
+  "ignores": ["**/node_modules/**"]
+}

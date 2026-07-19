@@ -17,6 +17,43 @@ services:
       - go-mod:/go/pkg/mod
       - go-build:/root/.cache/go-build
 
+  # Non-Go linters and formatters, each pinned and run through Docker so no tool
+  # is required on the host. Wired into `make check` / `check-fast`.
+  shellcheck:
+    image: koalaman/shellcheck:v0.10.0
+    entrypoint: ["shellcheck"]
+    working_dir: /src
+    volumes:
+      - .:/src
+
+  shfmt:
+    image: mvdan/shfmt:v3.10.0
+    entrypoint: ["shfmt"]
+    working_dir: /src
+    volumes:
+      - .:/src
+
+  hadolint:
+    image: hadolint/hadolint:v2.12.0
+    entrypoint: ["hadolint"]
+    working_dir: /src
+    volumes:
+      - .:/src
+
+  yamllint:
+    image: pipelinecomponents/yamllint:0.33.0
+    entrypoint: ["yamllint"]
+    working_dir: /src
+    volumes:
+      - .:/src
+
+  markdownlint:
+    image: davidanson/markdownlint-cli2:v0.15.0
+    entrypoint: ["markdownlint-cli2"]
+    working_dir: /src
+    volumes:
+      - .:/src
+
 volumes:
   go-mod:
   go-build:

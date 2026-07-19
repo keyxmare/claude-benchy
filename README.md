@@ -247,7 +247,7 @@ comparaison et le détail. Mettre `retries: 0` désactive la relance.
 Un `bundle` est un dossier superposé tel quel sur la copie de l'app. Y placer
 ce qu'on veut tester au niveau projet :
 
-```
+```text
 configs/strict-rules/
 ├── CLAUDE.md                  # instructions projet
 └── .claude/
@@ -266,7 +266,7 @@ l'app », et le bouton 👁 permet d'inspecter le contenu de l'app et des bundle
 
 ### Arborescence des résultats
 
-```
+```text
 results/<horodatage>/
 ├── <config>/
 │   ├── workspace/             # copie isolée après passage de Claude
