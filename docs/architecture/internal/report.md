@@ -75,8 +75,9 @@ bibliothèque standard. Consommé par `cmd/benchy` et `internal/server`.
 `report_test.go` : `TestAnalysisRanksAndRecommends`, `TestDegenerateAndOK`,
 `TestEvalByConfigAggregatesRunsAndExcludesDegenerate`,
 `TestEvalByConfigNilWithoutEvaluation`, `TestAnalysisWithNoSuccessfulRun`,
-`TestResultHTMLCollapsesSoftWraps`, `TestGolden`, `TestApplyButtonOnlyWhenServed`,
-`TestParseChanges`, `TestChangeSym`, `TestFileTreeHTML`, `TestNormalizeLevel`,
-`TestScoreFromCriteria`, `TestAggregateLevel`, `TestLevelWeight`,
-`TestLevelCSSClass`, `TestLevelSymbol`, `TestRankCSSClass`, `TestRankSymbol`,
+`TestGolden`, `TestApplyButtonOnlyWhenServed`, `TestNormalizeLevel`,
+`TestScoreFromCriteria`, `TestLevelWeight`, `TestLevelCSSClass`,
+`TestLevelSymbol`, `TestRankCSSClass`, `TestRankSymbol`,
 `TestEfficiencyRanksBestMidWorst`, `TestEfficiencyNoSuccessfulRun`.
+`report_internal_test.go` : `TestResultHTMLCollapsesSoftWraps`,
+`TestParseChanges`, `TestChangeSym`, `TestAggregateLevel`, `TestFileTreeHTML`.

@@ -63,4 +63,5 @@ page `/transcript`).
 `stream_test.go` : `TestParse`, `TestParseNoResult`,
 `TestParseIgnoresGarbageLines`.
 `render_test.go` : `TestRenderAssistantTextAndTools`,
-`TestLiveWriterSplitsAndFlushes`, `TestTruncateRuneSafe`.
+`TestLiveWriterSplitsAndFlushes`.
+`render_internal_test.go` : `TestTruncateRuneSafe`.

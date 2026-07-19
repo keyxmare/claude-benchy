@@ -65,7 +65,8 @@ Bibliothèque standard + binaire `docker` de l'hôte. Consommé par
 ## Cas de test associés
 
 `docker_test.go` : `TestRunArgs`, `TestRunArgsWithoutCreds`,
-`TestRunArgsWithEntrypoint`, `TestTailWriterKeepsLastBytesFlattened`,
+`TestRunArgsWithEntrypoint`.
+`tailwriter_internal_test.go` : `TestTailWriterKeepsLastBytesFlattened`,
 `TestTailWriterCapsRetainedBytes`, `TestTailWriterEmpty`.
 (`CLI.Run` / `CLI.Build` / `NewCLI` touchent le daemon et ne sont pas testés
 unitairement.)

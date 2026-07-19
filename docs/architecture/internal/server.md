@@ -95,7 +95,8 @@ Routes (mux `net/http` méthode+motif, Go 1.22) :
 `TestBenchDocMarshalsTidyYAML`.
 `import_test.go` : `TestNewImportsBenchFileWithAbsolutePaths`,
 `TestNewImportErrors`, `TestNewWithoutParamsRendersDefaultForm`,
-`TestNewFromInvalidDirIsRejected`, `TestResolveExistingFile`.
+`TestNewFromInvalidDirIsRejected`.
+`import_internal_test.go` : `TestResolveExistingFile`.
 `apply_test.go` : `TestApplyAppliesPatchToProject`, `TestApplyErrors`.
 `exportconfig_test.go` : `TestConfigFilesLists`, `TestConfigFilesErrors`,
 `TestConfigFilesRejectsBadArtifact`, `TestExportConfigCopiesSelectedFiles`,

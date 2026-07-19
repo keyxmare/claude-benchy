@@ -90,8 +90,9 @@ macOS.
 `TestLoadEvaluateInvalidCheck`, `TestLoadMissingBundle`.
 `import_test.go` : `TestImportAbsolutizesRelativePaths`,
 `TestImportPreservesComments`,
-`TestImportLeavesEmptyAndConfigsNonSequenceUntouched`, `TestImportErrors`,
-`TestDocumentMapping`, `TestMapValue`, `TestAbsolutizeScalar`.
+`TestImportLeavesEmptyAndConfigsNonSequenceUntouched`, `TestImportErrors`.
+`import_internal_test.go` : `TestDocumentMapping`, `TestMapValue`,
+`TestAbsolutizeScalar`.
 `creds_test.go` : `TestResolveCredsFileDarwinExportsKeychain`,
 `TestResolveCredsFileDarwinKeychainMissKeepsExistingFile`,
 `TestResolveCredsFileNonDarwinNeverReadsKeychain`.
