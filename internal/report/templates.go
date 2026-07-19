@@ -459,7 +459,7 @@ Chaque axe comparé entre configs (✓ meilleur, ✗ moins bon).
 | Axe |{{range .OKLabels}} {{.}} |{{end}}
 |---|{{range .OKLabels}}---|{{end}}
 {{- range .Efficiency}}
-| {{.Axis}} |{{range .Cells}} {{if .Level}}{{levelSymbol .Level}} {{end}}{{.Value}} |{{end}}
+| {{.Axis}} |{{range .Cells}} {{if .Rank}}{{.Rank.Symbol}} {{end}}{{.Value}} |{{end}}
 {{- end}}
 {{end}}
 ### Recommandations
@@ -884,7 +884,7 @@ h2 { scroll-margin-top: 1.2rem; }
 <tr>
 <td class="crit">{{.Axis}}</td>
 {{- range .Cells}}
-<td class="lvl {{levelClass .Level}}">{{if .Level}}<span class="mark">{{levelSymbol .Level}}</span>{{end}}<span class="obs">{{.Value}}</span></td>
+<td class="lvl {{.Rank.CSSClass}}">{{if .Rank}}<span class="mark">{{.Rank.Symbol}}</span>{{end}}<span class="obs">{{.Value}}</span></td>
 {{- end}}
 </tr>
 {{- end}}

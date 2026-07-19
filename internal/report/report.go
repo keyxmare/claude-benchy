@@ -621,11 +621,45 @@ func recommend(r Report, ok []RunReport) []string {
 
 func changeSize(r RunReport) int { return r.Diff.Insertions + r.Diff.Deletions }
 
+// Rank is a config's standing on one efficiency axis: best, worst or mid — the
+// empty Rank meaning the axis was flat across configs. It renders through the
+// shared Level visual language (best reads like a met criterion, worst like an
+// unmet one) so ranking cells match the criteria matrix without duplicating the
+// class and glyph tables.
+type Rank string
+
+// The efficiency standings. None is the zero value: a flat axis, shown neutral.
+const (
+	None  Rank = ""
+	Best  Rank = "best"
+	Mid   Rank = "mid"
+	Worst Rank = "worst"
+)
+
+func (r Rank) level() Level {
+	switch r {
+	case Best:
+		return Met
+	case Mid:
+		return Partial
+	case Worst:
+		return Unmet
+	default:
+		return Unrated
+	}
+}
+
+// CSSClass is the modifier applied to a ranking cell in the HTML report.
+func (r Rank) CSSClass() string { return r.level().CSSClass() }
+
+// Symbol is the glyph shown for the standing in the efficiency table.
+func (r Rank) Symbol() string { return r.level().Symbol() }
+
 // EffCell is one config's standing on one efficiency axis.
 type EffCell struct {
 	Label string
 	Value string
-	Level string // respecté (best) | non (worst) | partiel (mid) | "" (no spread)
+	Rank  Rank
 }
 
 // EffRow is one efficiency axis compared across configs.
@@ -663,13 +697,13 @@ func (r Report) Efficiency() []EffRow {
 			cell := EffCell{Label: run.Label(), Value: ax.format(ax.value(run))}
 			switch {
 			case flat:
-				cell.Level = ""
+				cell.Rank = None
 			case ax.value(run) == ax.value(best):
-				cell.Level = "respecté"
+				cell.Rank = Best
 			case ax.value(run) == ax.value(worst):
-				cell.Level = "non"
+				cell.Rank = Worst
 			default:
-				cell.Level = "partiel"
+				cell.Rank = Mid
 			}
 			row.Cells = append(row.Cells, cell)
 		}

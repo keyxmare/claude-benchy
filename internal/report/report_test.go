@@ -496,6 +496,52 @@ func TestLevelSymbol(t *testing.T) {
 	}
 }
 
+func TestEfficiencyRanksBestMidWorst(t *testing.T) {
+	run := func(cost float64) RunReport {
+		return RunReport{
+			Metrics: claude.Metrics{ToolUses: 1, NumTurns: 1, DurationMS: 1000, TotalCostUSD: cost},
+			Diff:    diffcap.Stats{FilesChanged: 1},
+		}
+	}
+	r := Report{Runs: []RunReport{run(0.01), run(0.02), run(0.03)}}
+
+	var cost EffRow
+	for _, row := range r.Efficiency() {
+		if row.Axis == "Coût" {
+			cost = row
+		}
+	}
+
+	want := []Rank{Best, Mid, Worst}
+	for i, w := range want {
+		if got := cost.Cells[i].Rank; got != w {
+			t.Errorf("Efficiency() Coût cell %d rank = %q, want %q", i, got, w)
+		}
+	}
+}
+
+func TestEfficiencyNoSuccessfulRun(t *testing.T) {
+	if got := (Report{Runs: []RunReport{{Err: "boom"}}}).Efficiency(); got != nil {
+		t.Errorf("Efficiency() with no OK run = %v, want nil", got)
+	}
+}
+
+func TestRankCSSClass(t *testing.T) {
+	for rank, want := range map[Rank]string{Best: "ok", Mid: "warn", Worst: "ko", None: "na"} {
+		if got := rank.CSSClass(); got != want {
+			t.Errorf("Rank(%q).CSSClass() = %q, want %q", rank, got, want)
+		}
+	}
+}
+
+func TestRankSymbol(t *testing.T) {
+	for rank, want := range map[Rank]string{Best: "✓", Mid: "~", Worst: "✗", None: "–"} {
+		if got := rank.Symbol(); got != want {
+			t.Errorf("Rank(%q).Symbol() = %q, want %q", rank, got, want)
+		}
+	}
+}
+
 func TestFileTreeHTML(t *testing.T) {
 	patch := "diff --git a/docs/a/b.md b/docs/a/b.md\nnew file mode 100644\n" +
 		"diff --git a/old.go b/old.go\ndeleted file mode 100644\n" +
