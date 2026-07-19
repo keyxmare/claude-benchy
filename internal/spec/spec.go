@@ -174,7 +174,7 @@ func (s *Spec) resolve(baseDir string) error {
 		return err
 	}
 	s.Auth.ConfigDir = configDir
-	s.CredsFile = filepath.Join(configDir, credentialsFile)
+	s.CredsFile = resolveCredsFile(configDir)
 
 	basePrompt, err := s.resolvedPrompt(s.Prompt, s.PromptFile)
 	if err != nil {

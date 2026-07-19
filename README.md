@@ -37,11 +37,18 @@ laquelle produit la meilleure modification sur une app de référence.
 
 ## Prérequis
 
-- Go (build de l'outil) et Docker (exécution des bacs à sable).
-- Une session Claude Code authentifiée sur l'hôte : les creds OAuth
-  (`~/.claude/.credentials.json` par défaut) sont montés en lecture seule dans
-  le conteneur. Si le token est expiré, rafraîchis-le sur l'hôte
-  (`claude` en interactif) avant de lancer un banc.
+- **Docker uniquement** : tout le toolchain Go (build, tests, lint) tourne en
+  conteneur, rien n'est requis sur l'hôte (cf. Développement). `make build`
+  produit tout de même un binaire `./benchy` natif à la plateforme hôte.
+- Une session Claude Code authentifiée sur l'hôte : les creds OAuth sont montés
+  en lecture seule dans le conteneur. Si le token est expiré, rafraîchis-le sur
+  l'hôte (`claude` en interactif) avant de lancer un banc.
+- **macOS** : Claude Code range ses creds dans le **Trousseau**, pas dans
+  `~/.claude/.credentials.json`. benchy les en exporte automatiquement :
+  - le binaire natif (`benchy run`/`serve`) lit le Trousseau à chaque run ;
+  - pour le dashboard conteneurisé, `make creds` matérialise l'export dans
+    `~/.claude/.credentials.json` (cf. Orbit). Ailleurs (Linux) le fichier
+    existant est utilisé tel quel.
 
 ## Installation
 
@@ -237,6 +244,46 @@ results/<horodatage>/
 └── report.html
 ```
 
+## Orbit (dashboard exposé par hostname)
+
+Le dépôt porte un **module de connexion Orbit** (`.orbit/manifest.yaml`) pour
+piloter le dashboard `benchy serve` depuis [Orbit](https://github.com/keyxmare/orbit) :
+démarrer / arrêter / suivre les logs en un clic et l'ouvrir sur
+**`http://benchy.localhost`** (via le Traefik partagé), sans retenir de port.
+
+Le dashboard est alors conteneurisé (`compose.yaml` + `Dockerfile`). Comme il
+lance ses conteneurs sandbox via le daemon Docker de **l'hôte** (docker-out-of-
+docker), qui ne sait monter que des chemins hôte, les chemins sont **alignés à
+l'identique** dans le conteneur benchy : `compose.yaml` monte la racine des
+projets et le dossier des creds Claude au **même chemin absolu**, plus le socket
+Docker. Le picker de fichiers et le montage des workspaces/creds dans les
+sandbox fonctionnent donc à l'identique de l'exécution sur l'hôte.
+
+### Mise en route
+
+```sh
+cp .env.dist .env   # ajuste les chemins hôte si besoin (home, racine projets)
+make creds          # macOS : exporte les creds du Trousseau (host, une fois)
+make image          # l'image sandbox doit exister sur le daemon hôte
+```
+
+- `.env` (non versionné) fixe `BENCHY_PROJECTS_ROOT`, `BENCHY_CLAUDE_DIR` et
+  `BENCHY_ROOT` — les chemins hôte montés à l'identique. Les défauts visent
+  `/Users/keyxmare`.
+- **`make creds` se lance sur l'hôte macOS**, pas via Orbit : son runner de
+  tâches est un conteneur Linux, sans accès au Trousseau. À relancer quand le
+  token a été rafraîchi sur l'hôte.
+- **Sous Orbit** : ouvre le projet, lance la tâche « Construit et démarre le
+  dashboard » (ou `make up`), puis « Ouvrir » → `benchy.localhost`. Orbit câble
+  Traefik et neutralise le port publié ; la santé remonte du healthcheck du
+  conteneur.
+- **En autonome** (sans Orbit) : `make up` publie aussi le dashboard sur
+  `http://127.0.0.1:8080`. `make down` l'arrête, `make logs` suit ses logs.
+
+> Prérequis : l'image sandbox `claude-benchy:latest` doit être présente sur le
+> daemon hôte (`make image`) et une session Claude authentifiée sur l'hôte (cf.
+> Prérequis). Le conteneur benchy ne rebâtit pas l'image sandbox.
+
 ## Isolation & sécurité
 
 - Un conteneur `--rm` jetable par run, exécuté en utilisateur non-root.
@@ -249,9 +296,15 @@ results/<horodatage>/
 
 ## Développement
 
+Le toolchain Go tourne **exclusivement dans Docker** (`compose.tools.yaml`) —
+aucun runtime Go, ni `golangci-lint`, sur l'hôte.
+
 ```sh
-make check          # gofmt -l, go vet, golangci-lint (si présent), go test
+make check          # format (gofmt), vet, lint (golangci-lint), tests
+make check-fast     # idem sans les tests (contrat du hook commit-gate)
+make test           # go test ./...
+make fmt            # gofmt -w .
+make build          # binaire ./benchy natif à la plateforme hôte
 ```
 
-Le toolchain de dev (Go) tourne sur l'hôte ; Docker n'est utilisé qu'au
-runtime par l'outil pour les bacs à sable Claude.
+Docker est aussi utilisé au runtime par l'outil pour les bacs à sable Claude.

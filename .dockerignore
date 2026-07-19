@@ -1,0 +1,6 @@
+.git
+.idea
+results
+/benchy
+*.log
+.env

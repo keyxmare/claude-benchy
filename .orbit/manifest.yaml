@@ -1,0 +1,31 @@
+version: 1
+name: claude-benchy
+host: benchy.localhost
+compose:
+  files:
+    - compose.yaml
+  projectName: claude-benchy
+expose:
+  - service: benchy
+    port: 8080
+neutralizePorts:
+  - benchy
+health:
+  type: compose
+  service: benchy
+tasks:
+  - label: 'Construit et démarre le dashboard'
+    cmd: 'make up'
+  - label: 'Arrête le dashboard'
+    cmd: 'make down'
+    destructive: true
+  - label: 'Suit les logs du dashboard'
+    cmd: 'make logs'
+  - label: "Construit l'image de bac à sable claude-benchy:latest"
+    cmd: 'make image'
+  - label: 'Gates qualité complètes (format, vet, lint, tests)'
+    cmd: 'make check'
+  - label: 'Tests Go'
+    cmd: 'make test'
+appearance:
+  color: '#f1ab00'

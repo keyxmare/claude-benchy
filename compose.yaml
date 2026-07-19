@@ -1,0 +1,25 @@
+services:
+  benchy:
+    build: .
+    command:
+      - serve
+      - --addr
+      - 0.0.0.0:8080
+      - --root
+      - ${BENCHY_ROOT:-/Users/keyxmare/Projects/github.com/keyxmare/claude-benchy}
+    working_dir: ${BENCHY_ROOT:-/Users/keyxmare/Projects/github.com/keyxmare/claude-benchy}
+    environment:
+      CLAUDE_CONFIG_DIR: ${BENCHY_CLAUDE_DIR:-/Users/keyxmare/.claude}
+    volumes:
+      - ${BENCHY_PROJECTS_ROOT:-/Users/keyxmare/Projects}:${BENCHY_PROJECTS_ROOT:-/Users/keyxmare/Projects}
+      - ${BENCHY_CLAUDE_DIR:-/Users/keyxmare/.claude}:${BENCHY_CLAUDE_DIR:-/Users/keyxmare/.claude}
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped

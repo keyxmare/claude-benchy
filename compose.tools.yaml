@@ -1,0 +1,22 @@
+name: claude-benchy-tools
+
+services:
+  go:
+    image: golang:1.25-bookworm
+    working_dir: /src
+    volumes:
+      - .:/src
+      - go-mod:/go/pkg/mod
+      - go-build:/root/.cache/go-build
+
+  lint:
+    image: golangci/golangci-lint:v2.5.0
+    working_dir: /src
+    volumes:
+      - .:/src
+      - go-mod:/go/pkg/mod
+      - go-build:/root/.cache/go-build
+
+volumes:
+  go-mod:
+  go-build:
