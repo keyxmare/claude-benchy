@@ -155,6 +155,66 @@ configs:
   - name: a
     bundle: ./cfg-a
 `,
+		"app missing": `
+prompt: p
+configs:
+  - name: a
+    bundle: ./cfg-a
+`,
+		"app is a file": `
+prompt: p
+app: ./bench.yaml
+configs:
+  - name: a
+    bundle: ./cfg-a
+`,
+		"app does not exist": `
+prompt: p
+app: ./nope
+configs:
+  - name: a
+    bundle: ./cfg-a
+`,
+		"concurrency below one": `
+prompt: p
+app: ./app
+concurrency: -1
+configs:
+  - name: a
+    bundle: ./cfg-a
+`,
+		"runs below one": `
+prompt: p
+app: ./app
+runs: -1
+configs:
+  - name: a
+    bundle: ./cfg-a
+`,
+		"check without name": `
+prompt: p
+app: ./app
+evaluate:
+  checks:
+    - run: go test ./...
+configs:
+  - name: a
+    bundle: ./cfg-a
+`,
+		"config without name": `
+prompt: p
+app: ./app
+configs:
+  - bundle: ./cfg-a
+`,
+		"config promptFile missing": `
+prompt: p
+app: ./app
+configs:
+  - name: a
+    bundle: ./cfg-a
+    promptFile: ./missing.txt
+`,
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -210,6 +270,46 @@ configs:
 `)
 	if _, err := spec.Load(path); err == nil {
 		t.Error("expected error for a check with neither run nor file")
+	}
+}
+
+func TestRetryCountNilDefaults(t *testing.T) {
+	t.Parallel()
+	var s spec.Spec // Retries left nil, as before any resolution
+
+	if got := s.RetryCount(); got != 2 {
+		t.Errorf("RetryCount() = %d, want %d", got, 2)
+	}
+}
+
+func TestLoadReadError(t *testing.T) {
+	t.Parallel()
+	missing := filepath.Join(t.TempDir(), "does-not-exist.yaml")
+
+	if _, err := spec.Load(missing); err == nil {
+		t.Errorf("spec.Load(%q) error = nil, want error", missing)
+	}
+}
+
+// Load's filepath.Abs(filepath.Dir(path)) error branch is unreachable in a
+// test: filepath.Abs only fails when os.Getwd fails, which cannot be forced
+// deterministically.
+
+func TestLoadConfigDirExpandError(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+	path := writeSpec(t, `
+prompt: p
+app: ./app
+auth:
+  configDir: ~/creds
+configs:
+  - name: a
+    bundle: ./cfg-a
+`)
+
+	if _, err := spec.Load(path); err == nil {
+		t.Error("spec.Load() error = nil, want error expanding ~ without HOME")
 	}
 }
 
