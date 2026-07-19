@@ -353,3 +353,27 @@ func TestRunRecordsPrepareFailure(t *testing.T) {
 		t.Error("expected recorded error for missing bundle")
 	}
 }
+
+func TestClaudeArgsForceNonInteractive(t *testing.T) {
+	args := claudeArgs(spec.Config{Name: "vanilla", Prompt: "Documente ce projet Go.", Model: "sonnet"})
+
+	if got := promptArg(args); got != "Documente ce projet Go." {
+		t.Errorf("promptArg(args) = %q, want the prompt right after -p", got)
+	}
+	if got := flagValue(args, "--append-system-prompt"); got != headlessSystemPrompt {
+		t.Errorf("flagValue(--append-system-prompt) = %q, want the headless instruction", got)
+	}
+	if got := flagValue(args, "--model"); got != "sonnet" {
+		t.Errorf("flagValue(--model) = %q, want %q", got, "sonnet")
+	}
+}
+
+// flagValue returns the argument following flag, or "" when absent.
+func flagValue(args []string, flag string) string {
+	for i, a := range args {
+		if a == flag && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return ""
+}

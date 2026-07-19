@@ -319,6 +319,14 @@ func runClaude(ctx context.Context, s *spec.Spec, j job, rel, artifactDir, works
 	return metrics, runErr
 }
 
+// headlessSystemPrompt forces autonomous behaviour: a benchmark run is
+// non-interactive, so an agent that stops to ask a clarifying question makes no
+// tool call and produces an empty diff — a degenerate run. Telling it up front
+// that no human can answer keeps a weakly-guided config (e.g. a neutral prompt
+// with no skill) acting instead of asking. It is applied to every config, so it
+// does not bias the comparison.
+const headlessSystemPrompt = "Tu t'exécutes en mode non interactif : aucune réponse humaine n'est possible. Ne pose jamais de question de clarification et ne t'interromps pas pour demander une validation ; prends les hypothèses raisonnables nécessaires et mène la tâche à son terme en modifiant les fichiers."
+
 func claudeArgs(c spec.Config) []string {
 	return []string{
 		"-p", c.Prompt,
@@ -326,6 +334,7 @@ func claudeArgs(c spec.Config) []string {
 		"--verbose",
 		"--dangerously-skip-permissions",
 		"--setting-sources", "project,local",
+		"--append-system-prompt", headlessSystemPrompt,
 		"--model", c.Model,
 	}
 }
