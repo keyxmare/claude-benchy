@@ -225,11 +225,11 @@ func checksSummary(r report.RunReport) string {
 	return fmt.Sprintf("%d/%d", passed, total)
 }
 
-func truncate(s string, max int) string {
-	if len(s) <= max {
+func truncate(s string, limit int) string {
+	if len(s) <= limit {
 		return s
 	}
-	return s[:max] + "\n… (diff tronqué)"
+	return s[:limit] + "\n… (diff tronqué)"
 }
 
 func fallback(s, def string) string {

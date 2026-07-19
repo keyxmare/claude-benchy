@@ -116,7 +116,7 @@ func ScoreFromCriteria(cs []CriterionEval) int {
 	for _, c := range cs {
 		switch NormalizeLevel(c.Level) {
 		case "respecté":
-			sum += 1
+			sum++
 		case "partiel":
 			sum += 0.5
 		}
@@ -230,16 +230,16 @@ func (r Report) configGroups() []configGroup {
 
 func (r Report) aggregateConfig(config, model string, judged []RunReport) ConfigScore {
 	scores := make([]int, len(judged))
-	min, max, sum := 100, 0, 0
+	lo, hi, sum := 100, 0, 0
 	for i, run := range judged {
 		s := r.Evaluation.For(run.Label()).Score
 		scores[i] = s
 		sum += s
-		if s < min {
-			min = s
+		if s < lo {
+			lo = s
 		}
-		if s > max {
-			max = s
+		if s > hi {
+			hi = s
 		}
 	}
 	mean := int(math.Round(float64(sum) / float64(len(judged))))
@@ -255,7 +255,7 @@ func (r Report) aggregateConfig(config, model string, judged []RunReport) Config
 
 	cs := ConfigScore{
 		Config: config, Model: model, Runs: len(judged),
-		MeanScore: mean, MinScore: min, MaxScore: max, Verdict: repEval.Verdict,
+		MeanScore: mean, MinScore: lo, MaxScore: hi, Verdict: repEval.Verdict,
 	}
 	for _, crit := range r.Evaluation.Rubric {
 		levels := make([]string, 0, len(judged))
@@ -282,7 +282,7 @@ func aggregateLevel(levels []string) string {
 	for _, l := range levels {
 		switch NormalizeLevel(l) {
 		case "respecté":
-			sum += 1
+			sum++
 		case "partiel":
 			sum += 0.5
 		}

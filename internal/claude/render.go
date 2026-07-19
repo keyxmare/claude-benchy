@@ -166,7 +166,7 @@ func extractResultText(raw json.RawMessage) string {
 
 // summarise flattens text to its first non-empty line, capped, noting how many
 // further lines were elided.
-func summarise(s string, max int) string {
+func summarise(s string, limit int) string {
 	lines := strings.Split(strings.TrimSpace(s), "\n")
 	first := ""
 	for _, l := range lines {
@@ -175,7 +175,7 @@ func summarise(s string, max int) string {
 			break
 		}
 	}
-	out := truncate(first, max)
+	out := truncate(first, limit)
 	if n := len(lines) - 1; n > 0 {
 		out += fmt.Sprintf(" …(+%d lignes)", n)
 	}
@@ -196,12 +196,12 @@ func firstLine(s string) string {
 	return s
 }
 
-func truncate(s string, max int) string {
+func truncate(s string, limit int) string {
 	s = strings.TrimSpace(s)
-	if len([]rune(s)) <= max {
+	if len([]rune(s)) <= limit {
 		return s
 	}
-	return string([]rune(s)[:max]) + "…"
+	return string([]rune(s)[:limit]) + "…"
 }
 
 func compact(raw json.RawMessage) string {

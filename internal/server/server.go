@@ -83,7 +83,7 @@ type dashboardData struct {
 	Root    string
 }
 
-func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleDashboard(w http.ResponseWriter, _ *http.Request) {
 	s.renderDashboard(w, defaultForm(), "", http.StatusOK)
 }
 

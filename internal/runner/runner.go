@@ -259,11 +259,11 @@ func runCheck(ctx context.Context, c spec.Check, workspaceDir string, opts Optio
 
 // oneLineTail returns the last max characters of s, flattened to a single line,
 // so a failing command's output stays legible in the report.
-func oneLineTail(s string, max int) string {
+func oneLineTail(s string, limit int) string {
 	s = strings.TrimSpace(s)
 	s = strings.ReplaceAll(s, "\n", " / ")
-	if len(s) > max {
-		s = "…" + s[len(s)-max:]
+	if len(s) > limit {
+		s = "…" + s[len(s)-limit:]
 	}
 	return s
 }
