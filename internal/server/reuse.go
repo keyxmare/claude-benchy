@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/keyxmare/claude-benchy/internal/runner"
 	"github.com/keyxmare/claude-benchy/internal/spec"
 	"gopkg.in/yaml.v3"
 )
@@ -128,7 +129,7 @@ func formFromArtifacts(root, dir string) formValues {
 	if b, err := os.ReadFile(filepath.Join(dir, "bench.json")); err == nil {
 		_ = json.Unmarshal(b, &meta)
 	}
-	if meta.Prompt != "(varies per config)" {
+	if meta.Prompt != runner.PromptVaries {
 		fv.Prompt = meta.Prompt
 	}
 	fv.App = meta.App

@@ -375,6 +375,12 @@ func anyOK(runs []report.RunReport) bool {
 	return false
 }
 
+// PromptVaries is written to bench.json's prompt field when a bench's configs
+// use different prompts. It lets a consumer rebuilding the bench form tell a
+// real shared prompt apart from this placeholder, without hardcoding the
+// literal in a second place.
+const PromptVaries = "(varies per config)"
+
 func commonPrompt(s *spec.Spec) string {
 	if len(s.Configs) == 0 {
 		return ""
@@ -382,7 +388,7 @@ func commonPrompt(s *spec.Spec) string {
 	first := s.Configs[0].Prompt
 	for _, c := range s.Configs[1:] {
 		if c.Prompt != first {
-			return "(varies per config)"
+			return PromptVaries
 		}
 	}
 	return first
