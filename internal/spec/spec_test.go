@@ -1,9 +1,11 @@
-package spec
+package spec_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/keyxmare/claude-benchy/internal/spec"
 )
 
 func writeSpec(t *testing.T, body string) string {
@@ -38,7 +40,7 @@ configs:
     model: opus
     prompt: override
 `)
-	s, err := Load(path)
+	s, err := spec.Load(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,13 +66,13 @@ func TestLoadRetries(t *testing.T) {
 		field string
 		want  int
 	}{
-		"unset defaults":  {"", defaultRetries},
+		"unset defaults":  {"", 2},
 		"explicit zero":   {"retries: 0", 0},
 		"explicit number": {"retries: 3", 3},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			s, err := Load(writeSpec(t, `
+			s, err := spec.Load(writeSpec(t, `
 prompt: p
 app: ./app
 `+tc.field+`
@@ -99,7 +101,7 @@ configs:
 	if err := os.WriteFile(filepath.Join(filepath.Dir(path), "prompt.txt"), []byte("from file"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	s, err := Load(path)
+	s, err := spec.Load(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +158,7 @@ configs:
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := Load(writeSpec(t, body)); err == nil {
+			if _, err := spec.Load(writeSpec(t, body)); err == nil {
 				t.Errorf("expected error for %q", name)
 			}
 		})
@@ -180,7 +182,7 @@ configs:
   - name: a
     bundle: ./cfg-a
 `)
-	s, err := Load(path)
+	s, err := spec.Load(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +208,7 @@ configs:
   - name: a
     bundle: ./cfg-a
 `)
-	if _, err := Load(path); err == nil {
+	if _, err := spec.Load(path); err == nil {
 		t.Error("expected error for a check with neither run nor file")
 	}
 }
@@ -219,7 +221,7 @@ configs:
   - name: a
     bundle: ./does-not-exist
 `)
-	if _, err := Load(path); err == nil {
+	if _, err := spec.Load(path); err == nil {
 		t.Error("expected error for missing bundle")
 	}
 }
