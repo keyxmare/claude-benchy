@@ -19,6 +19,15 @@
   <section class="panel">
     <h1>Nouveau bench</h1>
     {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+    <div class="import-bar">
+      <label class="muted">Importer une config depuis un bench.yaml
+        <span class="path">
+          <input type="text" class="pathinput" data-pick="file" id="importPath" placeholder="./benches/freedy/bench.yaml">
+          <button type="button" class="pick" aria-label="Parcourir">📁</button>
+          <button type="button" class="primary" id="importBtn">Importer</button>
+        </span>
+      </label>
+    </div>
     <form method="post" action="/run" class="bench-form">
       <label>Prompt
         <textarea name="prompt" rows="4" placeholder="Ajoute un endpoint /health renvoyant 200.">{{.Form.Prompt}}</textarea>
@@ -226,6 +235,15 @@
     if (val.charAt(0) === '/' || val.charAt(0) === '~') return val;
     if (val.indexOf('./') === 0) val = val.slice(2);
     return root + '/' + val;
+  }
+
+  // --- import an existing bench.yaml into the form --------------------------
+  var importBtn = document.getElementById('importBtn');
+  if (importBtn) {
+    importBtn.addEventListener('click', function () {
+      var v = document.getElementById('importPath').value.trim();
+      if (v) { window.location = '/new?import=' + encodeURIComponent(v); }
+    });
   }
 
   // --- server-side file/folder picker ---------------------------------------

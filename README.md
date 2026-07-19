@@ -80,6 +80,15 @@ Chaque exécution écrit ses artefacts sous `<output>/<horodatage>/`, affiche un
 **progression live** (début/fin de chaque config : durée, coût, diff) et le
 chemin du rapport HTML en fin de run.
 
+Pour partir d'un banc existant, `benchy new` l'importe en réécrivant ses chemins
+relatifs (`app`, `bundle`, `output`…) en absolu par rapport au fichier source,
+de sorte que le banc obtenu est lançable depuis n'importe où :
+
+```sh
+./benchy new --from benches/freedy/bench.yaml            # écrit sur la sortie standard
+./benchy new --from benches/freedy/bench.yaml --output bench.yaml
+```
+
 ### Interface web
 
 Pour configurer, lancer et parcourir les bancs depuis le navigateur plutôt
@@ -92,6 +101,10 @@ qu'en éditant un fichier de banc :
 - **Nouveau bench** : un formulaire couvre tous les inputs du fichier de banc
   (prompt, app, model, runs, configs, rubric, checks…) ; « Lancer » démarre le
   run et **diffuse la progression live**, puis affiche le lien du rapport.
+- **Importer une config** : en tête du formulaire, un champ « Importer une
+  config depuis un bench.yaml » (avec sélecteur de fichier côté serveur)
+  pré-remplit tout le formulaire depuis un `bench.yaml` existant ; ses chemins
+  relatifs sont réécrits en absolu par rapport au fichier importé.
 - **Sortie live par agent** : sous la console d'orchestration, un panneau par
   agent (config × run) affiche en temps réel la sortie de son Claude — texte,
   appels d'outils (`🔧 Bash`, `✏️ Edit`…) et leurs résultats — rendue à la volée

@@ -2,13 +2,34 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/keyxmare/claude-benchy/internal/spec"
 	"gopkg.in/yaml.v3"
 )
+
+// formFromFile imports an arbitrary bench.yaml into the dashboard form. It goes
+// through spec.Import so the file's relative paths (app, bundles, output…) are
+// rewritten to absolute against the file's own directory, keeping the imported
+// bench pointed at the same folders regardless of the dashboard's root.
+func formFromFile(path string) (formValues, error) {
+	raw, err := spec.Import(path)
+	if err != nil {
+		return formValues{}, err
+	}
+	var d benchDoc
+	if err := yaml.Unmarshal(raw, &d); err != nil {
+		return formValues{}, fmt.Errorf("bench.yaml invalide : %w", err)
+	}
+	if len(d.Configs) == 0 {
+		return formValues{}, fmt.Errorf("bench.yaml invalide : aucune configuration")
+	}
+	return formFromDoc(d), nil
+}
 
 // formFromDir rebuilds the dashboard form from a benchmark output directory so
 // its configuration can be reviewed, adapted and re-launched, in decreasing

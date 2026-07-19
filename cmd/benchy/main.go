@@ -47,6 +47,8 @@ func run(args []string) error {
 	switch args[0] {
 	case "run":
 		return cmdRun(ctx, args[1:])
+	case "new":
+		return cmdNew(args[1:])
 	case "report":
 		return cmdReport(args[1:])
 	case "build-image":
@@ -120,6 +122,39 @@ func resolveImage(fs *flag.FlagSet, flagValue, specImage string) string {
 		return specImage
 	}
 	return flagValue
+}
+
+// cmdNew imports an existing bench.yaml as the starting point for a new one,
+// rewriting its relative paths to absolute against the source file's directory
+// so the result is runnable from anywhere. It writes to --output or stdout.
+func cmdNew(args []string) error {
+	fs := flag.NewFlagSet("new", flag.ContinueOnError)
+	from := fs.String("from", "", "existing bench.yaml to import")
+	out := fs.String("output", "", "write the imported bench.yaml here (default: stdout)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *from == "" {
+		return fmt.Errorf("usage: benchy new --from <bench.yaml> [--output <dest.yaml>]")
+	}
+
+	src, err := filepath.Abs(*from)
+	if err != nil {
+		return err
+	}
+	raw, err := spec.Import(src)
+	if err != nil {
+		return err
+	}
+	if *out == "" {
+		_, err := os.Stdout.Write(raw)
+		return err
+	}
+	if err := os.WriteFile(*out, raw, 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("imported %s → %s\n", *from, *out)
+	return nil
 }
 
 func cmdReport(args []string) error {
@@ -199,6 +234,8 @@ func usage() {
 
 usage:
   benchy run [--image IMG] <bench.yaml>     run a benchmark
+  benchy new --from <bench.yaml> [--output F]
+                                            import a bench.yaml (paths made absolute) as a new starting point
   benchy report <results-dir>               re-render report from artifacts
   benchy serve [--addr A] [--root D] [--image IMG]
                                             web dashboard: configure, launch and browse benchmarks

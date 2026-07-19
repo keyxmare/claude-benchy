@@ -84,10 +84,25 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	s.renderDashboard(w, defaultForm(), "", http.StatusOK)
 }
 
-// handleNew renders the dashboard with the form pre-filled from an existing
-// benchmark's configuration (the ?from= directory), so it can be reviewed,
-// adapted and re-launched.
+// handleNew renders the dashboard with the form pre-filled: from an existing
+// bench.yaml file (?import=) or from a past run's directory (?from=), so a
+// configuration can be reviewed, adapted and re-launched.
 func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
+	if imp := r.URL.Query().Get("import"); imp != "" {
+		path, err := s.resolveExistingFile(imp)
+		if err != nil {
+			s.renderDashboard(w, defaultForm(), err.Error(), http.StatusBadRequest)
+			return
+		}
+		fv, err := formFromFile(path)
+		if err != nil {
+			s.renderDashboard(w, defaultForm(), err.Error(), http.StatusBadRequest)
+			return
+		}
+		s.renderDashboard(w, fv, "", http.StatusOK)
+		return
+	}
+
 	from := r.URL.Query().Get("from")
 	if from == "" {
 		s.renderDashboard(w, defaultForm(), "", http.StatusOK)
@@ -99,6 +114,24 @@ func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.renderDashboard(w, formFromDir(s.root, dir), "", http.StatusOK)
+}
+
+// resolveExistingFile turns a picker path (relative to the root, or absolute)
+// into an existing regular file. Like the browse/file endpoints it is not
+// confined to the root: the server is localhost-only and already reads the
+// arbitrary files the user selects.
+func (s *Server) resolveExistingFile(p string) (string, error) {
+	if strings.TrimSpace(p) == "" {
+		return "", errors.New("chemin manquant")
+	}
+	abs := filepath.Clean(p)
+	if !filepath.IsAbs(abs) {
+		abs = filepath.Join(s.root, abs)
+	}
+	if info, err := os.Stat(abs); err != nil || info.IsDir() {
+		return "", errors.New("fichier introuvable")
+	}
+	return abs, nil
 }
 
 func (s *Server) renderDashboard(w http.ResponseWriter, form formValues, errMsg string, code int) {
