@@ -88,7 +88,7 @@ func reloadRun(dir, rel string) report.RunReport {
 
 	if patch, err := os.ReadFile(filepath.Join(dir, "diff.patch")); err == nil {
 		res.Patch = string(patch)
-		res.Diff = patchStats(res.Patch)
+		res.Diff = diffcap.StatsFromPatch(res.Patch)
 		res.Files = collectFiles(filepath.Join(dir, "workspace"), res.Patch)
 	}
 
@@ -148,23 +148,6 @@ func readEmbed(path string) string {
 		return "… contenu binaire non affiché\n"
 	}
 	return string(b)
-}
-
-func patchStats(patch string) diffcap.Stats {
-	var s diffcap.Stats
-	for _, line := range strings.Split(patch, "\n") {
-		switch {
-		case strings.HasPrefix(line, "diff --git "):
-			s.FilesChanged++
-		case strings.HasPrefix(line, "+++"), strings.HasPrefix(line, "---"):
-			// file headers, ignore
-		case strings.HasPrefix(line, "+"):
-			s.Insertions++
-		case strings.HasPrefix(line, "-"):
-			s.Deletions++
-		}
-	}
-	return s
 }
 
 func readJSON(path string, v any) error {

@@ -39,6 +39,29 @@ func Capture(dir string) (Result, error) {
 	return Result{Patch: patch, Stats: parseNumstat(numstat)}, nil
 }
 
+// StatsFromPatch derives Stats from a unified diff, for callers that hold only
+// a persisted patch and not the numstat Capture computes at capture time. It
+// counts changed files and +/- lines; unlike numstat it does not special-case
+// binary files or renames, so Capture's Stats stay authoritative when both are
+// available. Keeping this beside parseNumstat makes diffcap the single owner of
+// turning a diff into Stats.
+func StatsFromPatch(patch string) Stats {
+	var s Stats
+	for _, line := range strings.Split(patch, "\n") {
+		switch {
+		case strings.HasPrefix(line, "diff --git "):
+			s.FilesChanged++
+		case strings.HasPrefix(line, "+++"), strings.HasPrefix(line, "---"):
+			// file headers, ignore
+		case strings.HasPrefix(line, "+"):
+			s.Insertions++
+		case strings.HasPrefix(line, "-"):
+			s.Deletions++
+		}
+	}
+	return s
+}
+
 func parseNumstat(out string) Stats {
 	var s Stats
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
