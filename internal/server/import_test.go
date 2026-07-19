@@ -1,4 +1,4 @@
-package server
+package server_test
 
 import (
 	"net/http"
@@ -102,45 +102,5 @@ func TestNewFromInvalidDirIsRejected(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
-	}
-}
-
-func TestResolveExistingFile(t *testing.T) {
-	srv, root := newTestServer(t)
-	file := filepath.Join(root, "bench.yaml")
-	if err := os.WriteFile(file, []byte("x\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	tests := []struct {
-		name    string
-		in      string
-		want    string
-		wantErr bool
-	}{
-		{name: "empty", in: "  ", wantErr: true},
-		{name: "relative existing", in: "./bench.yaml", want: file},
-		{name: "absolute existing", in: file, want: file},
-		{name: "directory", in: "./app", wantErr: true},
-		{name: "missing", in: "./nope.yaml", wantErr: true},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := srv.resolveExistingFile(tt.in)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("resolveExistingFile(%q) error = nil, want error", tt.in)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("resolveExistingFile(%q) error = %v", tt.in, err)
-			}
-			if got != tt.want {
-				t.Errorf("resolveExistingFile(%q) = %q, want %q", tt.in, got, tt.want)
-			}
-		})
 	}
 }

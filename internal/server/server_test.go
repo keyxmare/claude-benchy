@@ -1,4 +1,4 @@
-package server
+package server_test
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/keyxmare/claude-benchy/internal/docker"
+	"github.com/keyxmare/claude-benchy/internal/server"
 )
 
 // fakeDocker stands in for the sandbox: a Claude run mutates the workspace and
@@ -35,7 +36,7 @@ func (fakeDocker) Run(_ context.Context, spec docker.RunSpec, stdout, _ io.Write
 
 // newTestServer returns a server rooted at a temp dir holding an app and a
 // config bundle, ready to run a benchmark through the fake sandbox.
-func newTestServer(t *testing.T) (*Server, string) {
+func newTestServer(t *testing.T) (*server.Server, string) {
 	t.Helper()
 	root := t.TempDir()
 	app := filepath.Join(root, "app")
@@ -52,11 +53,26 @@ func newTestServer(t *testing.T) (*Server, string) {
 	if err := os.WriteFile(filepath.Join(bundle, "CLAUDE.md"), []byte("cfg\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	srv, err := New(root, "img", fakeDocker{})
+	srv, err := server.New(root, "img", fakeDocker{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return srv, root
+}
+
+// latestRunDir returns the single run directory produced under results/,
+// relative to root — the observable artifact of a completed benchmark, found
+// without reaching into the server's unexported history scan.
+func latestRunDir(t *testing.T, root string) string {
+	t.Helper()
+	ents, err := os.ReadDir(filepath.Join(root, "results"))
+	if err != nil {
+		t.Fatalf("read results: %v", err)
+	}
+	if len(ents) != 1 {
+		t.Fatalf("results has %d entries, want 1", len(ents))
+	}
+	return filepath.Join("results", ents[0].Name())
 }
 
 func runForm() url.Values {
@@ -118,17 +134,18 @@ func TestRunLaunchesJobAndStreamsToCompletion(t *testing.T) {
 		t.Errorf("stream should end with a done event, got:\n%s", stream)
 	}
 
-	entries := scanHistory(root)
-	if len(entries) != 1 {
-		t.Fatalf("history has %d entries, want 1", len(entries))
+	// The completed run is listed on the dashboard, summarised by its prompt.
+	dashRec := httptest.NewRecorder()
+	h.ServeHTTP(dashRec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if !strings.Contains(dashRec.Body.String(), "do the thing") {
+		t.Errorf("dashboard should list the run by its prompt, got:\n%s", dashRec.Body.String())
 	}
-	if entries[0].Prompt != "do the thing" || len(entries[0].Configs) != 1 {
-		t.Errorf("history entry not summarised as expected: %+v", entries[0])
-	}
+
+	dir := latestRunDir(t, root)
 
 	// The freshly produced run renders through the report route.
 	repRec := httptest.NewRecorder()
-	h.ServeHTTP(repRec, httptest.NewRequest(http.MethodGet, "/report?dir="+url.QueryEscape(entries[0].Dir), nil))
+	h.ServeHTTP(repRec, httptest.NewRequest(http.MethodGet, "/report?dir="+url.QueryEscape(dir), nil))
 	if repRec.Code != http.StatusOK {
 		t.Fatalf("report status = %d, want 200; body: %s", repRec.Code, repRec.Body.String())
 	}
@@ -141,7 +158,7 @@ func TestRunLaunchesJobAndStreamsToCompletion(t *testing.T) {
 
 	// The per-agent transcript replays the same readable feed from disk.
 	trRec := httptest.NewRecorder()
-	h.ServeHTTP(trRec, httptest.NewRequest(http.MethodGet, "/transcript?dir="+url.QueryEscape(entries[0].Dir+"/baseline"), nil))
+	h.ServeHTTP(trRec, httptest.NewRequest(http.MethodGet, "/transcript?dir="+url.QueryEscape(dir+"/baseline"), nil))
 	if trRec.Code != http.StatusOK {
 		t.Fatalf("transcript status = %d, want 200; body: %s", trRec.Code, trRec.Body.String())
 	}
@@ -171,13 +188,10 @@ func TestNewPrefillsFormFromRunConfig(t *testing.T) {
 	// Wait for completion (and thus the persisted bench.yaml) via the stream.
 	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/runs/1/events", nil))
 
-	entries := scanHistory(root)
-	if len(entries) != 1 {
-		t.Fatalf("history has %d entries, want 1", len(entries))
-	}
+	dir := latestRunDir(t, root)
 
 	newRec := httptest.NewRecorder()
-	h.ServeHTTP(newRec, httptest.NewRequest(http.MethodGet, "/new?from="+url.QueryEscape(entries[0].Dir), nil))
+	h.ServeHTTP(newRec, httptest.NewRequest(http.MethodGet, "/new?from="+url.QueryEscape(dir), nil))
 	if newRec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", newRec.Code)
 	}
