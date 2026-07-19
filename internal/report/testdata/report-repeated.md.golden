@@ -84,6 +84,35 @@ Chaque axe comparé entre configs (✓ meilleur, ✗ moins bon).
 - Meilleur compromis coût / rapidité / directivité : **skill**.
 - Face à **vanilla · run 2**, les autres configurations coûtent en moyenne +0 % et sont 0 % plus lentes, pour un périmètre de changement comparable.
 
+## Arbres de fichiers
+
+Fichiers touchés par chaque configuration (+ ajouté, ~ modifié, - supprimé).
+
+### vanilla
+
+_Aucune modification._
+
+### vanilla · run 2
+
+- ~ x_test.go
+
+### vanilla · run 3
+
+- ~ x_test.go
+
+### skill
+
+- ~ x_test.go
+
+### skill · run 2
+
+- ~ x_test.go
+
+### skill · run 3
+
+- ~ x_test.go
+
+
 ## Détail par config
 
 ### vanilla — sans effet

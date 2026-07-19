@@ -22,8 +22,9 @@ func sample() Report {
 				ArtifactDir: "vanilla",
 				Metrics: claude.Metrics{
 					NumTurns: 3, ToolUses: 4, TotalCostUSD: 0.0123,
-					DurationMS: 8200,
-					Result:     "Ajout de `GET /health`.\n\n**Résumé** : nouvelle route renvoyant\n200 avec un corps JSON minimal. Aucun test existant impacté.",
+					DurationMS:    8200,
+					ToolBreakdown: map[string]int{"Bash": 2, "Write": 1, "Read": 1},
+					Result:        "Ajout de `GET /health`.\n\n**Résumé** : nouvelle route renvoyant\n200 avec un corps JSON minimal. Aucun test existant impacté.",
 				},
 				Diff:  diffcap.Stats{FilesChanged: 1, Insertions: 3, Deletions: 0},
 				Patch: "diff --git a/server.js b/server.js\n@@ -1,2 +1,5 @@\n context\n+added line\n-removed line",
@@ -40,8 +41,9 @@ func sample() Report {
 				ArtifactDir: "strict",
 				Metrics: claude.Metrics{
 					NumTurns: 6, ToolUses: 9, TotalCostUSD: 0.0456,
-					DurationMS: 15400,
-					Result:     "Endpoint ajouté avec validation du statut.",
+					DurationMS:    15400,
+					ToolBreakdown: map[string]int{"Edit": 5, "Bash": 2, "Read": 2},
+					Result:        "Endpoint ajouté avec validation du statut.",
 				},
 				Diff:  diffcap.Stats{FilesChanged: 1, Insertions: 5, Deletions: 0},
 				Patch: "diff --git a/server.js b/server.js\n@@ -1,2 +1,6 @@\n context\n+more lines",
@@ -354,5 +356,62 @@ func TestApplyButtonOnlyWhenServed(t *testing.T) {
 	}
 	if strings.Contains(standalone.String(), `action="/apply"`) {
 		t.Error("standalone report (no server) must not offer an apply form")
+	}
+}
+
+func TestParseChanges(t *testing.T) {
+	added := "diff --git a/docs/x.md b/docs/x.md\nnew file mode 100644\n--- /dev/null\n+++ b/docs/x.md\n@@ -0,0 +1 @@\n+hi\n"
+	removed := "diff --git a/old.go b/old.go\ndeleted file mode 100644\n--- a/old.go\n+++ /dev/null\n"
+	modified := "diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n-a\n+b\n"
+
+	malformed := "diff --git bogus-line-without-b-path\n"
+	got := parseChanges(added + removed + modified + malformed)
+
+	want := []fileChange{
+		{Path: "README.md", Status: "modified"},
+		{Path: "docs/x.md", Status: "added"},
+		{Path: "old.go", Status: "removed"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("parseChanges() = %+v, want %+v", got, want)
+	}
+	for i, w := range want {
+		if got[i] != w {
+			t.Errorf("parseChanges()[%d] = %+v, want %+v", i, got[i], w)
+		}
+	}
+	if n := parseChanges(""); n != nil {
+		t.Errorf("parseChanges(empty) = %+v, want nil", n)
+	}
+}
+
+func TestChangeSym(t *testing.T) {
+	for status, want := range map[string]string{"added": "+", "removed": "-", "modified": "~", "": "~"} {
+		if got := changeSym(status); got != want {
+			t.Errorf("changeSym(%q) = %q, want %q", status, got, want)
+		}
+	}
+}
+
+func TestFileTreeHTML(t *testing.T) {
+	patch := "diff --git a/docs/a/b.md b/docs/a/b.md\nnew file mode 100644\n" +
+		"diff --git a/old.go b/old.go\ndeleted file mode 100644\n" +
+		"diff --git a/README.md b/README.md\n@@ -1 +1 @@\n"
+
+	got := string(fileTreeHTML(RunReport{Patch: patch}))
+
+	for _, want := range []string{
+		`<li class="dir">docs/`,
+		`<li class="dir">a/`,
+		`<li class="file added">b.md</li>`,
+		`<li class="file removed">old.go</li>`,
+		`<li class="file modified">README.md</li>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("fileTreeHTML() missing %q in:\n%s", want, got)
+		}
+	}
+	if empty := string(fileTreeHTML(RunReport{})); !strings.Contains(empty, "Aucune modification") {
+		t.Errorf("fileTreeHTML(empty) = %q", empty)
 	}
 }

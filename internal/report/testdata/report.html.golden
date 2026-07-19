@@ -23,6 +23,7 @@
   --brand-bg: #000000; --brand-ink: #ffffff;
   --ok: #0f7000; --err: #d70321; --warn: var(--mb-yellow-800); --focus: var(--mb-yellow-500);
   --add-bg: #eaf6ea; --add-fg: #0f6b00; --del-bg: #fdeaec; --del-fg: #a1021a; --hunk: #31708a;
+  --chg-bg: #fbe6b3; --chg-fg: #7a5800;
 
   --r-card: 16px; --r-ctl: 8px; --r-full: 999px;
   --font-display: 'Montserrat', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -162,6 +163,7 @@ ul.checklist li { padding: 0.15rem 0; }
 ul.checklist li.ok::before { content: "\2713"; color: var(--ok); font-weight: 800; margin-right: 0.6rem; }
 ul.checklist li.ko::before { content: "\2717"; color: var(--err); font-weight: 800; margin-right: 0.6rem; }
 ul.checklist li .stat { color: var(--ink-quiet); font-family: var(--font-mono); font-size: 0.8rem; }
+p.tool-summary { font-family: var(--font-mono); font-size: 0.82rem; }
 form.apply { margin: 1rem 0 0; }
 .sxs-controls { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: 1rem 0; align-items: center; }
 .sxs-controls label { color: var(--ink-quiet); font-family: var(--font-display); font-size: 0.78rem;
@@ -182,8 +184,22 @@ table.sxs td { padding: 0 0.6rem; border: 0; vertical-align: top; white-space: p
 table.sxs td.ln { width: 3rem; text-align: right; color: var(--ink-quiet); user-select: none;
   white-space: nowrap; overflow: hidden; padding: 0 0.5rem; }
 table.sxs td.code.left { border-right: 1px solid var(--border); }
-table.sxs tr.del td.left, table.sxs tr.chg td.left { background: var(--del-bg); color: var(--del-fg); }
-table.sxs tr.add td.right, table.sxs tr.chg td.right { background: var(--add-bg); color: var(--add-fg); }
+ 
+table.sxs tr.del td.left { background: var(--add-bg); color: var(--add-fg); }
+table.sxs tr.add td.right { background: var(--add-bg); color: var(--add-fg); }
+table.sxs tr.chg td.left, table.sxs tr.chg td.right { background: var(--chg-bg); color: var(--chg-fg); }
+.ftrees { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 1rem 0; }
+.ftree-card { border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 0.6rem 0.9rem; min-width: 0; overflow-x: auto; }
+.ftree-card h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+ul.ftree { list-style: none; margin: 0; padding-left: 0.9rem; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; }
+.ftree li.dir { font-weight: 600; }
+.ftree li.file.added { color: var(--add-fg); }
+.ftree li.file.removed { color: var(--del-fg); text-decoration: line-through; }
+.ftree li.file.added::before { content: "+ "; }
+.ftree li.file.removed::before { content: "− "; }
+.ftree li.file.modified::before { content: "~ "; color: var(--ink-quiet); }
+.ftree-legend { color: var(--ink-quiet); font-size: 0.85rem; }
+.ftree-legend .added { color: var(--add-fg); } .ftree-legend .removed { color: var(--del-fg); }
 .empty { color: var(--ink-quiet); font-style: italic; }
  
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
@@ -382,8 +398,26 @@ h2 { scroll-margin-top: 1.2rem; }
 </ul>
 </div>
 
+<h2 id="arbres">Arbres de fichiers</h2>
+<p class="meta-list ftree-legend">Vue d'ensemble des fichiers touchés par chaque configuration :
+<span class="added">+ ajouté</span> · ~ modifié · <span class="removed">− supprimé</span>.</p>
+<div class="ftrees">
+<div class="ftree-card">
+<h3>vanilla</h3>
+<ul class="ftree"><li class="file modified">server.js</li></ul>
+</div>
+<div class="ftree-card">
+<h3>strict</h3>
+<ul class="ftree"><li class="file modified">server.js</li></ul>
+</div>
+<div class="ftree-card">
+<h3>broken</h3>
+<p class="empty">Aucune modification.</p>
+</div>
+</div>
+
 <h2 id="cote-a-cote">Comparaison côte à côte</h2>
-<p class="meta-list">Fichiers touchés par chaque configuration, code complet affiché. Les lignes divergentes entre les deux configurations sélectionnées sont surlignées.</p>
+<p class="meta-list">Code complet des fichiers touchés, deux configurations côte à côte. Une ligne présente d'un seul côté (un ajout de cette config) est surlignée en vert ; une ligne qui diffère entre les deux est surlignée en ambre.</p>
 <div class="sxs-controls">
 <label>Config gauche <select id="sxs-left"></select></label>
 <label>Config droite <select id="sxs-right"></select></label>
@@ -404,6 +438,8 @@ h2 { scroll-margin-top: 1.2rem; }
 <div class="card-info">
 <p class="meta-list">Artefacts : <code>vanilla</code></p>
 <div class="result"><p>Ajout de <code>GET /health</code>.</p><p><strong>Résumé</strong> : nouvelle route renvoyant 200 avec un corps JSON minimal. Aucun test existant impacté.</p></div>
+<h4 class="detail-sub">Outils utilisés</h4>
+<p class="meta-list tool-summary">Bash ×2 · Read ×1 · Write ×1</p>
 <h4 class="detail-sub">Vérifications</h4>
 <ul class="checklist">
 <li class="ok">tests</li>
@@ -424,6 +460,8 @@ h2 { scroll-margin-top: 1.2rem; }
 <div class="card-info">
 <p class="meta-list">Artefacts : <code>strict</code></p>
 <div class="result"><p>Endpoint ajouté avec validation du statut.</p></div>
+<h4 class="detail-sub">Outils utilisés</h4>
+<p class="meta-list tool-summary">Edit ×5 · Bash ×2 · Read ×2</p>
 <h4 class="detail-sub">Vérifications</h4>
 <ul class="checklist">
 <li class="ko">tests <span class="stat">…FAIL server.test.js</span></li>
@@ -459,6 +497,7 @@ h2 { scroll-margin-top: 1.2rem; }
 <a href="#comparaison">Comparaison</a>
 <a href="#evaluation">Évaluation de l'attendu</a>
 <a href="#efficacite">Efficacité</a>
+<a href="#arbres">Arbres de fichiers</a>
 <a href="#cote-a-cote">Comparaison côte à côte</a>
 <a href="#detail">Détail par config</a>
 </nav>

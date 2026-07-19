@@ -7,9 +7,158 @@ import (
 	htmltmpl "html/template"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 	texttmpl "text/template"
 )
+
+// toolSummary formats a run's tool usage, most-used first, e.g.
+// "Edit ×12 · Read ×8 · Bash ×5". Empty when the run recorded no tool breakdown.
+func toolSummary(r RunReport) string {
+	b := r.Metrics.ToolBreakdown
+	if len(b) == 0 {
+		return ""
+	}
+	type stat struct {
+		name string
+		n    int
+	}
+	stats := make([]stat, 0, len(b))
+	for name, n := range b {
+		stats = append(stats, stat{name, n})
+	}
+	sort.Slice(stats, func(i, j int) bool {
+		if stats[i].n != stats[j].n {
+			return stats[i].n > stats[j].n
+		}
+		return stats[i].name < stats[j].name
+	})
+	parts := make([]string, len(stats))
+	for i, s := range stats {
+		parts[i] = fmt.Sprintf("%s ×%d", s.name, s.n)
+	}
+	return strings.Join(parts, " · ")
+}
+
+// fileChange is one path touched by a run and how it changed.
+type fileChange struct {
+	Path   string
+	Status string // "added", "removed" or "modified"
+}
+
+// parseChanges extracts the per-file change status from a unified git diff.
+func parseChanges(patch string) []fileChange {
+	var out []fileChange
+	lines := strings.Split(patch, "\n")
+	for i := 0; i < len(lines); i++ {
+		if !strings.HasPrefix(lines[i], "diff --git ") {
+			continue
+		}
+		fc := fileChange{Path: diffGitPath(lines[i]), Status: "modified"}
+		for j := i + 1; j < len(lines) && !strings.HasPrefix(lines[j], "diff --git "); j++ {
+			switch {
+			case strings.HasPrefix(lines[j], "new file mode"):
+				fc.Status = "added"
+			case strings.HasPrefix(lines[j], "deleted file mode"):
+				fc.Status = "removed"
+			}
+		}
+		if fc.Path != "" {
+			out = append(out, fc)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
+	return out
+}
+
+// diffGitPath returns the destination path of a `diff --git a/X b/X` line.
+func diffGitPath(line string) string {
+	if i := strings.Index(line, " b/"); i >= 0 {
+		return line[i+3:]
+	}
+	return ""
+}
+
+// changeList exposes a run's file changes to the Markdown template.
+func changeList(r RunReport) []fileChange { return parseChanges(r.Patch) }
+
+// changeSym is the Markdown marker for a change status.
+func changeSym(status string) string {
+	switch status {
+	case "added":
+		return "+"
+	case "removed":
+		return "-"
+	default:
+		return "~"
+	}
+}
+
+type treeNode struct {
+	name     string
+	status   string
+	children map[string]*treeNode
+}
+
+func buildTree(changes []fileChange) *treeNode {
+	root := &treeNode{children: map[string]*treeNode{}}
+	for _, c := range changes {
+		cur := root
+		parts := strings.Split(c.Path, "/")
+		for k, p := range parts {
+			child, ok := cur.children[p]
+			if !ok {
+				child = &treeNode{name: p, children: map[string]*treeNode{}}
+				cur.children[p] = child
+			}
+			if k == len(parts)-1 {
+				child.status = c.Status
+			}
+			cur = child
+		}
+	}
+	return root
+}
+
+// fileTreeHTML renders a run's touched files as a nested tree, coloured by
+// change status, for the side-by-side comparison's global overview.
+func fileTreeHTML(r RunReport) htmltmpl.HTML {
+	changes := parseChanges(r.Patch)
+	if len(changes) == 0 {
+		return htmltmpl.HTML(`<p class="empty">Aucune modification.</p>`)
+	}
+	var b strings.Builder
+	renderTree(&b, buildTree(changes))
+	return htmltmpl.HTML(b.String())
+}
+
+func renderTree(b *strings.Builder, n *treeNode) {
+	names := make([]string, 0, len(n.children))
+	for name := range n.children {
+		names = append(names, name)
+	}
+	// Directories first, then files, each alphabetical.
+	sort.Slice(names, func(i, j int) bool {
+		di := len(n.children[names[i]].children) > 0
+		dj := len(n.children[names[j]].children) > 0
+		if di != dj {
+			return di
+		}
+		return names[i] < names[j]
+	})
+	b.WriteString(`<ul class="ftree">`)
+	for _, name := range names {
+		c := n.children[name]
+		if len(c.children) > 0 {
+			b.WriteString(`<li class="dir">` + html.EscapeString(name) + "/")
+			renderTree(b, c)
+			b.WriteString("</li>")
+		} else {
+			b.WriteString(`<li class="file ` + c.status + `">` + html.EscapeString(name) + "</li>")
+		}
+	}
+	b.WriteString("</ul>")
+}
 
 // transcriptHref builds the dashboard URL replaying a run's transcript, from the
 // output directory base and the run's artifact subdirectory.
@@ -255,6 +404,9 @@ var funcs = map[string]any{
 	"levelSymbol":    levelSymbol,
 	"checkClass":     checkClass,
 	"mdCell":         mdCell,
+	"toolSummary":    toolSummary,
+	"changeList":     changeList,
+	"changeSym":      changeSym,
 }
 
 const markdownSource = `# Rapport claude-benchy
@@ -334,6 +486,19 @@ Chaque axe comparé entre configs (✓ meilleur, ✗ moins bon).
 - {{.}}
 {{- end}}
 
+## Arbres de fichiers
+
+Fichiers touchés par chaque configuration (+ ajouté, ~ modifié, - supprimé).
+{{range .Runs}}
+### {{.Label}}
+{{if changeList .}}
+{{range changeList .}}- {{changeSym .Status}} {{.Path}}
+{{end}}
+{{- else}}
+_Aucune modification._
+{{end}}
+{{- end}}
+
 ## Détail par config
 {{range .Runs}}
 ### {{.Label}} — {{status .}}
@@ -347,6 +512,10 @@ Chaque axe comparé entre configs (✓ meilleur, ✗ moins bon).
 **Résultat**
 
 {{.Metrics.Result}}
+{{- end}}
+{{- if toolSummary .}}
+
+**Outils utilisés :** {{toolSummary .}}
 {{- end}}
 {{- if .Checks}}
 
@@ -387,6 +556,7 @@ const htmlSource = `<!doctype html>
   --brand-bg: #000000; --brand-ink: #ffffff;
   --ok: #0f7000; --err: #d70321; --warn: var(--mb-yellow-800); --focus: var(--mb-yellow-500);
   --add-bg: #eaf6ea; --add-fg: #0f6b00; --del-bg: #fdeaec; --del-fg: #a1021a; --hunk: #31708a;
+  --chg-bg: #fbe6b3; --chg-fg: #7a5800;
 
   --r-card: 16px; --r-ctl: 8px; --r-full: 999px;
   --font-display: 'Montserrat', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -526,6 +696,7 @@ ul.checklist li { padding: 0.15rem 0; }
 ul.checklist li.ok::before { content: "\2713"; color: var(--ok); font-weight: 800; margin-right: 0.6rem; }
 ul.checklist li.ko::before { content: "\2717"; color: var(--err); font-weight: 800; margin-right: 0.6rem; }
 ul.checklist li .stat { color: var(--ink-quiet); font-family: var(--font-mono); font-size: 0.8rem; }
+p.tool-summary { font-family: var(--font-mono); font-size: 0.82rem; }
 form.apply { margin: 1rem 0 0; }
 .sxs-controls { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: 1rem 0; align-items: center; }
 .sxs-controls label { color: var(--ink-quiet); font-family: var(--font-display); font-size: 0.78rem;
@@ -546,8 +717,23 @@ table.sxs td { padding: 0 0.6rem; border: 0; vertical-align: top; white-space: p
 table.sxs td.ln { width: 3rem; text-align: right; color: var(--ink-quiet); user-select: none;
   white-space: nowrap; overflow: hidden; padding: 0 0.5rem; }
 table.sxs td.code.left { border-right: 1px solid var(--border); }
-table.sxs tr.del td.left, table.sxs tr.chg td.left { background: var(--del-bg); color: var(--del-fg); }
-table.sxs tr.add td.right, table.sxs tr.chg td.right { background: var(--add-bg); color: var(--add-fg); }
+/* A line present on only one side is an addition on that side (green); a line
+   that differs between the two configs is highlighted amber on both sides. */
+table.sxs tr.del td.left { background: var(--add-bg); color: var(--add-fg); }
+table.sxs tr.add td.right { background: var(--add-bg); color: var(--add-fg); }
+table.sxs tr.chg td.left, table.sxs tr.chg td.right { background: var(--chg-bg); color: var(--chg-fg); }
+.ftrees { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 1rem 0; }
+.ftree-card { border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 0.6rem 0.9rem; min-width: 0; overflow-x: auto; }
+.ftree-card h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+ul.ftree { list-style: none; margin: 0; padding-left: 0.9rem; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; }
+.ftree li.dir { font-weight: 600; }
+.ftree li.file.added { color: var(--add-fg); }
+.ftree li.file.removed { color: var(--del-fg); text-decoration: line-through; }
+.ftree li.file.added::before { content: "+ "; }
+.ftree li.file.removed::before { content: "− "; }
+.ftree li.file.modified::before { content: "~ "; color: var(--ink-quiet); }
+.ftree-legend { color: var(--ink-quiet); font-size: 0.85rem; }
+.ftree-legend .added { color: var(--add-fg); } .ftree-legend .removed { color: var(--del-fg); }
 .empty { color: var(--ink-quiet); font-style: italic; }
 /* Layout : contenu + sommaire latéral droit collant (masqué sous ~1080px). */
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
@@ -722,8 +908,20 @@ h2 { scroll-margin-top: 1.2rem; }
 </ul>
 </div>
 
+<h2 id="arbres">Arbres de fichiers</h2>
+<p class="meta-list ftree-legend">Vue d'ensemble des fichiers touchés par chaque configuration :
+<span class="added">+ ajouté</span> · ~ modifié · <span class="removed">− supprimé</span>.</p>
+<div class="ftrees">
+{{- range .Runs}}
+<div class="ftree-card">
+<h3>{{.Label}}</h3>
+{{fileTreeHTML .}}
+</div>
+{{- end}}
+</div>
+
 <h2 id="cote-a-cote">Comparaison côte à côte</h2>
-<p class="meta-list">Fichiers touchés par chaque configuration, code complet affiché. Les lignes divergentes entre les deux configurations sélectionnées sont surlignées.</p>
+<p class="meta-list">Code complet des fichiers touchés, deux configurations côte à côte. Une ligne présente d'un seul côté (un ajout de cette config) est surlignée en vert ; une ligne qui diffère entre les deux est surlignée en ambre.</p>
 <div class="sxs-controls">
 <label>Config gauche <select id="sxs-left"></select></label>
 <label>Config droite <select id="sxs-right"></select></label>
@@ -748,6 +946,10 @@ h2 { scroll-margin-top: 1.2rem; }
 {{- end}}
 {{- if .Metrics.Result}}
 <div class="result">{{.Metrics.Result | resultHTML}}</div>
+{{- end}}
+{{- if toolSummary .}}
+<h4 class="detail-sub">Outils utilisés</h4>
+<p class="meta-list tool-summary">{{toolSummary .}}</p>
 {{- end}}
 {{- if .Checks}}
 <h4 class="detail-sub">Vérifications</h4>
@@ -779,6 +981,7 @@ h2 { scroll-margin-top: 1.2rem; }
 <a href="#comparaison">Comparaison</a>
 {{if .Evaluation}}<a href="#evaluation">Évaluation de l'attendu</a>{{end}}
 <a href="#efficacite">Efficacité</a>
+<a href="#arbres">Arbres de fichiers</a>
 <a href="#cote-a-cote">Comparaison côte à côte</a>
 <a href="#detail">Détail par config</a>
 </nav>
@@ -942,5 +1145,6 @@ func htmlFuncs() htmltmpl.FuncMap {
 	fm["resultHTML"] = resultHTML
 	fm["markdownInline"] = markdownInline
 	fm["filesJSON"] = filesJSON
+	fm["fileTreeHTML"] = fileTreeHTML
 	return fm
 }

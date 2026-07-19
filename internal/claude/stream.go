@@ -28,6 +28,10 @@ type Metrics struct {
 	Result        string  `json:"result"`
 	Usage         Usage   `json:"usage"`
 	ToolUses      int     `json:"tool_uses"`
+	// ToolBreakdown counts tool_use blocks per tool name (e.g. Bash, Edit). It
+	// is derived while parsing, not part of the result event, and persisted in
+	// result.json so the report can detail which tools a run leaned on.
+	ToolBreakdown map[string]int `json:"tool_breakdown,omitempty"`
 }
 
 const maxLineBytes = 16 * 1024 * 1024
@@ -37,6 +41,7 @@ type envelope struct {
 	Message struct {
 		Content []struct {
 			Type string `json:"type"`
+			Name string `json:"name"`
 		} `json:"content"`
 	} `json:"message"`
 }
@@ -48,9 +53,10 @@ func Parse(r io.Reader) (Metrics, error) {
 	scanner.Buffer(make([]byte, 0, 64*1024), maxLineBytes)
 
 	var (
-		metrics  Metrics
-		toolUses int
-		found    bool
+		metrics   Metrics
+		toolUses  int
+		breakdown = map[string]int{}
+		found     bool
 	)
 	for scanner.Scan() {
 		line := scanner.Bytes()
@@ -66,6 +72,7 @@ func Parse(r io.Reader) (Metrics, error) {
 			for _, block := range env.Message.Content {
 				if block.Type == "tool_use" {
 					toolUses++
+					breakdown[block.Name]++
 				}
 			}
 		case "result":
@@ -82,5 +89,8 @@ func Parse(r io.Reader) (Metrics, error) {
 		return Metrics{}, fmt.Errorf("no result event found in transcript")
 	}
 	metrics.ToolUses = toolUses
+	if len(breakdown) > 0 {
+		metrics.ToolBreakdown = breakdown
+	}
 	return metrics, nil
 }

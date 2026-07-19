@@ -82,6 +82,23 @@ Chaque axe comparé entre configs (✓ meilleur, ✗ moins bon).
 - Face à **vanilla**, les autres configurations coûtent en moyenne +271 % et sont 88 % plus lentes, pour un périmètre plus large (+2 ligne(s) en moyenne).
 - Un seul run par configuration : les écarts peuvent relever de la variance. Répéter (`runs > 1`) avant de conclure.
 
+## Arbres de fichiers
+
+Fichiers touchés par chaque configuration (+ ajouté, ~ modifié, - supprimé).
+
+### vanilla
+
+- ~ server.js
+
+### strict
+
+- ~ server.js
+
+### broken
+
+_Aucune modification._
+
+
 ## Détail par config
 
 ### vanilla — ok
@@ -94,6 +111,8 @@ Ajout de `GET /health`.
 
 **Résumé** : nouvelle route renvoyant
 200 avec un corps JSON minimal. Aucun test existant impacté.
+
+**Outils utilisés :** Bash ×2 · Read ×1 · Write ×1
 
 **Vérifications**
 
@@ -109,6 +128,8 @@ _Code produit : voir la comparaison côte à côte._
 **Résultat**
 
 Endpoint ajouté avec validation du statut.
+
+**Outils utilisés :** Edit ×5 · Bash ×2 · Read ×2
 
 **Vérifications**
 
