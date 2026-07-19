@@ -1,9 +1,10 @@
 package docker
 
 import (
-	"slices"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestRunArgs(t *testing.T) {
@@ -24,16 +25,16 @@ func TestRunArgs(t *testing.T) {
 		"img",
 		"-p", "hello", "--model", "sonnet",
 	}
-	if !slices.Equal(got, want) {
-		t.Fatalf("RunArgs mismatch\n got: %v\nwant: %v", got, want)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("RunArgs() mismatch (-want +got):\n%s", diff)
 	}
 }
 
 func TestRunArgsWithoutCreds(t *testing.T) {
 	got := RunArgs(RunSpec{Image: "img", WorkDir: "/w", Args: []string{"-p", "x"}})
 	want := []string{"run", "--rm", "-v", "/w:/work", "-w", "/work", "img", "-p", "x"}
-	if !slices.Equal(got, want) {
-		t.Fatalf("RunArgs mismatch\n got: %v\nwant: %v", got, want)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("RunArgs() mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -82,7 +83,7 @@ func TestRunArgsWithEntrypoint(t *testing.T) {
 		"run", "--rm", "-v", "/w:/work", "-w", "/work",
 		"--entrypoint", "sh", "img", "-c", "go test ./...",
 	}
-	if !slices.Equal(got, want) {
-		t.Fatalf("RunArgs mismatch\n got: %v\nwant: %v", got, want)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("RunArgs() mismatch (-want +got):\n%s", diff)
 	}
 }

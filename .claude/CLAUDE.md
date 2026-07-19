@@ -80,8 +80,8 @@ projet, c'est suivre le chemin d'un banc à travers ces packages :
   config (score moyen + dispersion) et comparaison côte à côte fichier par
   fichier.
 - **`internal/server`** — dashboard web (sans framework web ; bibliothèque
-  standard + `yaml.v3`, l'unique dépendance du projet, pour lire/écrire le
-  `bench.yaml` du formulaire) :
+  standard + `yaml.v3`, l'unique dépendance de production du projet — `go-cmp`
+  ne sert qu'aux tests — pour lire/écrire le `bench.yaml` du formulaire) :
   formulaire de banc, progression live (SSE), sortie par agent, historique,
   reprise de config, pickers de fichiers côté serveur. **Localhost par défaut**
   (il lance des conteneurs avec creds montés et liste le FS hôte).

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v3"
 )
 
@@ -74,16 +75,8 @@ configs:
 	}
 	want.Auth.ConfigDir = "~/.claude"
 
-	if got.App != want.App || got.Output != want.Output || got.PromptFile != want.PromptFile || got.Auth.ConfigDir != want.Auth.ConfigDir {
-		t.Errorf("Import() scalars = %+v, want %+v", got, want)
-	}
-	if len(got.Configs) != len(want.Configs) {
-		t.Fatalf("Import() configs = %+v, want %+v", got.Configs, want.Configs)
-	}
-	for i, wc := range want.Configs {
-		if got.Configs[i] != wc {
-			t.Errorf("Import() config[%d] = %+v, want %+v", i, got.Configs[i], wc)
-		}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Import() mismatch (-want +got):\n%s", diff)
 	}
 }
 

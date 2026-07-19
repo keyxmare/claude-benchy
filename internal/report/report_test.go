@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/keyxmare/claude-benchy/internal/claude"
 	"github.com/keyxmare/claude-benchy/internal/diffcap"
 )
@@ -380,13 +381,8 @@ func TestParseChanges(t *testing.T) {
 		{Path: "docs/x.md", Status: "added"},
 		{Path: "old.go", Status: "removed"},
 	}
-	if len(got) != len(want) {
-		t.Fatalf("parseChanges() = %+v, want %+v", got, want)
-	}
-	for i, w := range want {
-		if got[i] != w {
-			t.Errorf("parseChanges()[%d] = %+v, want %+v", i, got[i], w)
-		}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("parseChanges() mismatch (-want +got):\n%s", diff)
 	}
 	if n := parseChanges(""); n != nil {
 		t.Errorf("parseChanges(empty) = %+v, want nil", n)
@@ -513,10 +509,12 @@ func TestEfficiencyRanksBestMidWorst(t *testing.T) {
 	}
 
 	want := []Rank{Best, Mid, Worst}
-	for i, w := range want {
-		if got := cost.Cells[i].Rank; got != w {
-			t.Errorf("Efficiency() Coût cell %d rank = %q, want %q", i, got, w)
-		}
+	var got []Rank
+	for _, c := range cost.Cells {
+		got = append(got, c.Rank)
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Efficiency() Coût ranks mismatch (-want +got):\n%s", diff)
 	}
 }
 

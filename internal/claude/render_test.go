@@ -1,9 +1,10 @@
 package claude
 
 import (
-	"slices"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestRenderAssistantTextAndTools(t *testing.T) {
@@ -89,8 +90,8 @@ func TestRenderAssistantTextAndTools(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := Render([]byte(tc.line))
-			if !slices.Equal(got, tc.want) {
-				t.Fatalf("Render mismatch\n got: %q\nwant: %q", got, tc.want)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("Render() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -104,12 +105,12 @@ func TestLiveWriterSplitsAndFlushes(t *testing.T) {
 	_, _ = w.Write([]byte(`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bas`))
 	_, _ = w.Write([]byte("h\",\"input\":{\"command\":\"ls\"}}]}}\n{\"type\":\"result\",\"subtype\":\"success\",\"num_turns\":1,\"total_cost_usd\":0.5}"))
 
-	if want := []string{"⏺ Bash(ls)"}; !slices.Equal(got, want) {
-		t.Fatalf("before flush =\n%q\nwant %q", got, want)
+	if want := []string{"⏺ Bash(ls)"}; cmp.Diff(want, got) != "" {
+		t.Errorf("before flush =\n%q\nwant %q", got, want)
 	}
 	w.Flush()
-	if want := []string{"⏺ Bash(ls)", "✓ terminé · 1 tours · $0.5000"}; !slices.Equal(got, want) {
-		t.Fatalf("after flush =\n%q\nwant %q", got, want)
+	if want := []string{"⏺ Bash(ls)", "✓ terminé · 1 tours · $0.5000"}; cmp.Diff(want, got) != "" {
+		t.Errorf("after flush =\n%q\nwant %q", got, want)
 	}
 }
 
