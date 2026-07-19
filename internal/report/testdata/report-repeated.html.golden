@@ -8,7 +8,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
- 
+/* Système de design Gazoline (Motoblouz) : noir/blanc purs, accent jaune
+   #f1ab00 employé avec parcimonie, Montserrat, radius anguleux, pas d'ombres.
+   Contraintes de contraste respectées : le jaune ne sert jamais de texte sur
+   fond clair (yellow-800 ou noir), bordures de contrôle en grey-700. */
 :root {
   --mb-yellow-100: #fbe6b3; --mb-yellow-500: #f1ab00; --mb-yellow-600: #d99a00;
   --mb-yellow-700: #c18900; --mb-yellow-800: #a97800;
@@ -90,7 +93,7 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .reco { margin-top: 0; }
 .reco ul { margin: 0.5rem 0 0.2rem; padding-left: 1.2rem; }
 .reco p { margin: 0.4rem 0 0.2rem; }
- 
+/* Two-column rows to use the full width on normal screens (single column below ~800px). */
 .grid-2 { display: grid; gap: 0.8rem 2rem; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   align-items: start; margin: 3rem 0 0; }
 .grid-2 > section { min-width: 0; }
@@ -184,7 +187,8 @@ table.sxs td { padding: 0 0.6rem; border: 0; vertical-align: top; white-space: p
 table.sxs td.ln { width: 3rem; text-align: right; color: var(--ink-quiet); user-select: none;
   white-space: nowrap; overflow: hidden; padding: 0 0.5rem; }
 table.sxs td.code.left { border-right: 1px solid var(--border); }
- 
+/* A line present on only one side is an addition on that side (green); a line
+   that differs between the two configs is highlighted amber on both sides. */
 table.sxs tr.del td.left { background: var(--add-bg); color: var(--add-fg); }
 table.sxs tr.add td.right { background: var(--add-bg); color: var(--add-fg); }
 table.sxs tr.chg td.left, table.sxs tr.chg td.right { background: var(--chg-bg); color: var(--chg-fg); }
@@ -213,7 +217,7 @@ dialog.picker::backdrop { background: rgba(0, 0, 0, 0.4); }
 .picker-actions { display: flex; justify-content: flex-end; margin-top: 0.7rem; }
 .cfg-all { display: block; font-family: var(--font-ui); font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
 .empty { color: var(--ink-quiet); font-style: italic; }
- 
+/* Layout : contenu + sommaire latéral droit collant (masqué sous ~1080px). */
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
 main { min-width: 0; }
 main > :first-child { margin-top: 0; }
