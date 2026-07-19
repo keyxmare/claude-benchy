@@ -1,3 +1,9 @@
+---
+paths:
+  - "docs/**"
+  - "README.md"
+---
+
 # Règle — Documentation du projet
 
 Conventions toujours actives pour toute documentation produite sur ce projet
@@ -28,7 +34,7 @@ sans page fourre-tout :
   parcours.
 - `docs/architecture/` — le **comment** (dev) : **une page par package**,
   nommée en **miroir exact du chemin** sous l'arbre de code
-  (`docs/architecture/internal/renderer.md` pour `internal/renderer`) — il en
+  (`docs/architecture/internal/runner.md` pour `internal/runner`) — il en
   faut une pour **chaque** dossier de `internal/` contenant du `.go`.
   `docs/architecture/index.md` liste les pages ; `docs/architecture/decisions/`
   accueille les ADR.
@@ -79,7 +85,7 @@ Des checks déterministes valident la doc — les satisfaire n'est pas optionnel
 
 - **Une page d'architecture par package `internal/`** : pour chaque dossier de
   `internal/` contenant du `.go`, un `docs/architecture/<chemin>.md` (miroir
-  exact du chemin, ex. `internal/label` → `docs/architecture/internal/label.md`).
+  exact du chemin, ex. `internal/spec` → `docs/architecture/internal/spec.md`).
 - **Matrice ancrée dans de vrais tests** : `docs/traceabilite.md` cite les
   **noms exacts** des fonctions `func Test…` présentes dans les `*_test.go`
   (copiés tels quels, sans reformuler).
@@ -93,15 +99,15 @@ Des checks déterministes valident la doc — les satisfaire n'est pas optionnel
   reconstructibilité ; elle cite de vrais noms de tests.
 - **ADR** sous `docs/architecture/decisions/`, un fichier numéroté par décision
   non triviale (contexte / décision / conséquences) — fige le *pourquoi* des
-  cas pièges (états de surface, `RowsPerImage`, `LockOSThread`…).
-- **Diagrammes Mermaid** (texte, pas de binaire) pour les flux et la couture
-  plateforme/rendu.
+  cas pièges (runs sans effet et relance, `keepBaseConfig`, isolation sandbox…).
+- **Diagrammes Mermaid** (texte, pas de binaire) pour les flux (le pipeline
+  `spec → workspace → docker → claude → diffcap → runner → report`).
 - **User stories en Gherkin** (Given/When/Then) reliées aux tests.
 
 ## Rédaction
 
 - **En français** ; code et identifiants en anglais, cités tels quels
-  (`renderer.New`, `main_web.go`…). Fonctionnel et domaine **sans jargon**.
+  (`runner.Run`, `report.Write`…). Fonctionnel et domaine **sans jargon**.
 - Chaque page : titre `H1`, une phrase d'intro, frontmatter minimal
   (`titre`, `public`, `sources:` chemins de code couverts).
 - **Fidélité au code, zéro invention** : on ne documente que ce qui existe ;
