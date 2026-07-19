@@ -401,6 +401,101 @@ func TestChangeSym(t *testing.T) {
 	}
 }
 
+func TestNormalizeLevel(t *testing.T) {
+	for in, want := range map[string]Level{
+		"respecté":           Met,
+		"respectée à moitié": Met,
+		"OUI":                Met,
+		"ok":                 Met,
+		"met the bar":        Met,
+		"full":               Met,
+		"partiellement":      Partial,
+		"partial credit":     Partial,
+		"non":                Unmet,
+		"n'importe quoi":     Unmet,
+		"":                   Unrated,
+		"   ":                Unrated,
+	} {
+		if got := NormalizeLevel(in); got != want {
+			t.Errorf("NormalizeLevel(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestScoreFromCriteria(t *testing.T) {
+	crit := func(levels ...string) []CriterionEval {
+		cs := make([]CriterionEval, len(levels))
+		for i, l := range levels {
+			cs[i] = CriterionEval{Level: l}
+		}
+		return cs
+	}
+	tests := []struct {
+		name string
+		in   []CriterionEval
+		want int
+	}{
+		{"empty", nil, 0},
+		{"all met", crit("respecté", "respecté"), 100},
+		{"met and unmet", crit("respecté", "non"), 50},
+		{"met partial unmet rounds", crit("respecté", "partiel", "non"), 50},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := ScoreFromCriteria(tt.in); got != tt.want {
+				t.Errorf("ScoreFromCriteria(%v) = %d, want %d", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAggregateLevel(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []string
+		want string
+	}{
+		{"empty", nil, ""},
+		{"unanimous met", []string{"respecté", "respecté"}, "respecté"},
+		{"met boundary 0.75", []string{"respecté", "respecté", "respecté", "non"}, "respecté"},
+		{"mixed to partial", []string{"respecté", "non"}, "partiel"},
+		{"unanimous unmet", []string{"non", "non"}, "non"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := aggregateLevel(tt.in); got != tt.want {
+				t.Errorf("aggregateLevel(%v) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLevelWeight(t *testing.T) {
+	for level, want := range map[Level]float64{Met: 1, Partial: 0.5, Unmet: 0, Unrated: 0} {
+		if got := level.Weight(); got != want {
+			t.Errorf("Level(%q).Weight() = %v, want %v", level, got, want)
+		}
+	}
+}
+
+func TestLevelCSSClass(t *testing.T) {
+	for level, want := range map[Level]string{Met: "ok", Partial: "warn", Unmet: "ko", Unrated: "na"} {
+		if got := level.CSSClass(); got != want {
+			t.Errorf("Level(%q).CSSClass() = %q, want %q", level, got, want)
+		}
+	}
+}
+
+func TestLevelSymbol(t *testing.T) {
+	for level, want := range map[Level]string{Met: "✓", Partial: "~", Unmet: "✗", Unrated: "–"} {
+		if got := level.Symbol(); got != want {
+			t.Errorf("Level(%q).Symbol() = %q, want %q", level, got, want)
+		}
+	}
+}
+
 func TestFileTreeHTML(t *testing.T) {
 	patch := "diff --git a/docs/a/b.md b/docs/a/b.md\nnew file mode 100644\n" +
 		"diff --git a/old.go b/old.go\ndeleted file mode 100644\n" +

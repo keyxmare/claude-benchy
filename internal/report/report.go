@@ -92,34 +92,86 @@ func (c ConfigEval) Note(criterion string) string {
 	return ""
 }
 
-// NormalizeLevel maps a free-form judge level onto one of the three canonical
-// values: "respecté", "partiel" or "non".
-func NormalizeLevel(level string) string {
+// Level is a judge criterion rating normalized to one canonical value. It owns
+// the knowledge attached to a rating — its score weight and its rendering — so
+// that weight and glyph live in a single place rather than being re-derived at
+// every call site.
+type Level string
+
+// The canonical ratings. Unrated is the zero value: a criterion the judge did
+// not score.
+const (
+	Unrated Level = ""
+	Met     Level = "respecté"
+	Partial Level = "partiel"
+	Unmet   Level = "non"
+)
+
+// NormalizeLevel maps a free-form judge level onto a canonical Level. Blank
+// input is Unrated; anything unrecognized falls back to Unmet.
+func NormalizeLevel(level string) Level {
 	s := strings.ToLower(strings.TrimSpace(level))
 	switch {
+	case s == "":
+		return Unrated
 	case strings.HasPrefix(s, "respect"), s == "oui", s == "ok", strings.HasPrefix(s, "met"), s == "full":
-		return "respecté"
+		return Met
 	case strings.HasPrefix(s, "partiel"), strings.HasPrefix(s, "partial"):
-		return "partiel"
+		return Partial
 	default:
-		return "non"
+		return Unmet
 	}
 }
 
-// ScoreFromCriteria aggregates criteria levels into a 0-100 score, equal weight
-// (respecté = 1, partiel = 0.5, non = 0).
+// Weight is the rating's contribution to a 0-1 score: Met counts full, Partial
+// half, everything else nothing.
+func (l Level) Weight() float64 {
+	switch l {
+	case Met:
+		return 1
+	case Partial:
+		return 0.5
+	default:
+		return 0
+	}
+}
+
+// CSSClass is the modifier applied to a level cell in the HTML report.
+func (l Level) CSSClass() string {
+	switch l {
+	case Met:
+		return "ok"
+	case Partial:
+		return "warn"
+	case Unmet:
+		return "ko"
+	default:
+		return "na"
+	}
+}
+
+// Symbol is the glyph shown for the level in the criteria matrix.
+func (l Level) Symbol() string {
+	switch l {
+	case Met:
+		return "✓"
+	case Partial:
+		return "~"
+	case Unmet:
+		return "✗"
+	default:
+		return "–"
+	}
+}
+
+// ScoreFromCriteria aggregates criteria levels into a 0-100 score, equal weight.
 func ScoreFromCriteria(cs []CriterionEval) int {
 	if len(cs) == 0 {
 		return 0
 	}
 	sum := 0.0
 	for _, c := range cs {
-		switch NormalizeLevel(c.Level) {
-		case "respecté":
-			sum++
-		case "partiel":
-			sum += 0.5
-		}
+		sum += NormalizeLevel(c.Level).Weight()
 	}
 	return int(math.Round(sum / float64(len(cs)) * 100))
 }
@@ -280,12 +332,7 @@ func aggregateLevel(levels []string) string {
 	}
 	sum := 0.0
 	for _, l := range levels {
-		switch NormalizeLevel(l) {
-		case "respecté":
-			sum++
-		case "partiel":
-			sum += 0.5
-		}
+		sum += NormalizeLevel(l).Weight()
 	}
 	switch avg := sum / float64(len(levels)); {
 	case avg >= 0.75:

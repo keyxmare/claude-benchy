@@ -223,20 +223,10 @@ func checks(r RunReport) string {
 
 func add(a, b int) int { return a + b }
 
-// levelClass maps a judge criterion level onto a CSS class: ok / warn / ko, or
-// na when the criterion was not rated.
+// levelClass maps a free-form judge criterion level onto a CSS class: ok / warn
+// / ko, or na when the criterion was not rated.
 func levelClass(level string) string {
-	if strings.TrimSpace(level) == "" {
-		return "na"
-	}
-	switch NormalizeLevel(level) {
-	case "respecté":
-		return "ok"
-	case "partiel":
-		return "warn"
-	default:
-		return "ko"
-	}
+	return NormalizeLevel(level).CSSClass()
 }
 
 // mdCell makes a string safe inside a Markdown table cell: pipes escaped,
@@ -248,16 +238,7 @@ func mdCell(s string) string {
 
 // levelSymbol is the glyph shown for a level in the criteria matrix.
 func levelSymbol(level string) string {
-	switch levelClass(level) {
-	case "ok":
-		return "✓" // ✓
-	case "warn":
-		return "~"
-	case "ko":
-		return "✗" // ✗
-	default:
-		return "–" // –
-	}
+	return NormalizeLevel(level).Symbol()
 }
 
 // inlineHTML renders the inline Markdown subset (**bold**, `code`) inside an
