@@ -353,7 +353,11 @@ type RunReport struct {
 	Files       []FileVersion
 	Checks      []Check
 	ArtifactDir string
-	Err         string
+	// Bundle is the resolved config bundle directory for this run, when known
+	// (recorded in meta.json). The server uses it to offer exporting the
+	// config's files onto the project under test.
+	Bundle string
+	Err    string
 }
 
 // ChecksPassed reports how many of the run's checks passed out of the total.

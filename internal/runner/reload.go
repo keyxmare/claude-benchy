@@ -78,6 +78,7 @@ func reloadRun(dir, rel string) report.RunReport {
 		res.Config = meta.Config
 		res.Run = meta.Run
 		res.Model = meta.Model
+		res.Bundle = meta.Bundle
 	}
 
 	var metrics claude.Metrics

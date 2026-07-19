@@ -44,9 +44,9 @@ func (s *Server) handleApply(w http.ResponseWriter, r *http.Request) {
 	writeApplyPage(w, http.StatusOK, dirParam, "Modifications appliquées dans "+app+" (non committées).", true)
 }
 
-// resolvePatch returns the diff.patch path for a run's artifact directory,
-// rejecting an artifact path that escapes the results directory.
-func resolvePatch(resultsDir, artifact string) (string, error) {
+// artifactDir resolves a run's artifact directory under the results directory,
+// rejecting an artifact path that escapes it.
+func artifactDir(resultsDir, artifact string) (string, error) {
 	if strings.TrimSpace(artifact) == "" {
 		return "", errors.New("artefact manquant")
 	}
@@ -54,6 +54,15 @@ func resolvePatch(resultsDir, artifact string) (string, error) {
 	rel, err := filepath.Rel(resultsDir, art)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", errors.New("artefact hors du dossier de résultats")
+	}
+	return art, nil
+}
+
+// resolvePatch returns the diff.patch path for a run's artifact directory.
+func resolvePatch(resultsDir, artifact string) (string, error) {
+	art, err := artifactDir(resultsDir, artifact)
+	if err != nil {
+		return "", err
 	}
 	patch := filepath.Join(art, "diff.patch")
 	if _, err := os.Stat(patch); err != nil {

@@ -339,15 +339,20 @@ func TestGolden(t *testing.T) {
 func TestApplyButtonOnlyWhenServed(t *testing.T) {
 	served := sample()
 	served.TranscriptBase = "benches/x/results/ts"
+	served.Runs[0].Bundle = "/some/bundle"
 	var withServer bytes.Buffer
 	if err := WriteHTML(&withServer, served); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(withServer.String(), `action="/apply"`) {
+	body := withServer.String()
+	if !strings.Contains(body, `action="/apply"`) {
 		t.Error("served report should offer an apply form")
 	}
-	if !strings.Contains(withServer.String(), `name="artifact" value="vanilla"`) {
+	if !strings.Contains(body, `name="artifact" value="vanilla"`) {
 		t.Error("apply form should carry the run's artifact dir")
+	}
+	if !strings.Contains(body, `class="export-config"`) || !strings.Contains(body, `action="/export-config"`) {
+		t.Error("served report should offer config export for a run with a known bundle")
 	}
 
 	var standalone bytes.Buffer
@@ -356,6 +361,9 @@ func TestApplyButtonOnlyWhenServed(t *testing.T) {
 	}
 	if strings.Contains(standalone.String(), `action="/apply"`) {
 		t.Error("standalone report (no server) must not offer an apply form")
+	}
+	if strings.Contains(standalone.String(), `action="/export-config"`) {
+		t.Error("standalone report must not offer config export")
 	}
 }
 

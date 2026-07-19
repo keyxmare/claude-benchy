@@ -61,6 +61,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /new", s.handleNew)
 	mux.HandleFunc("POST /run", s.handleRun)
 	mux.HandleFunc("POST /apply", s.handleApply)
+	mux.HandleFunc("GET /config-files", s.handleConfigFiles)
+	mux.HandleFunc("POST /export-config", s.handleExportConfig)
 	mux.HandleFunc("GET /runs/{id}", s.handleRunPage)
 	mux.HandleFunc("GET /runs/{id}/events", s.handleEvents)
 	mux.HandleFunc("POST /runs/{id}/stop", s.handleStop)

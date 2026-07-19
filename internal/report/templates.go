@@ -734,6 +734,18 @@ ul.ftree { list-style: none; margin: 0; padding-left: 0.9rem; font-family: var(-
 .ftree li.file.modified::before { content: "~ "; color: var(--ink-quiet); }
 .ftree-legend { color: var(--ink-quiet); font-size: 0.85rem; }
 .ftree-legend .added { color: var(--add-fg); } .ftree-legend .removed { color: var(--del-fg); }
+button.primary { font-family: var(--font-ui); font-weight: 600; font-size: 0.85rem; border: 1px solid var(--border-strong);
+  background: var(--accent); color: var(--accent-ink); border-radius: var(--r-ctl); padding: 0.4rem 0.8rem; cursor: pointer; }
+button.export-config { font-family: var(--font-ui); font-size: 0.85rem; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--ink); border-radius: var(--r-ctl); padding: 0.35rem 0.7rem; cursor: pointer; }
+dialog.picker { border: 1px solid var(--border-strong); border-radius: var(--r-card); padding: 1rem; max-width: 560px; width: 90vw; color: var(--ink); background: var(--surface); }
+dialog.picker::backdrop { background: rgba(0, 0, 0, 0.4); }
+.picker-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+.picker-head button { border: 0; background: none; font-size: 1.3rem; line-height: 1; cursor: pointer; color: var(--ink); }
+.picker-list { list-style: none; margin: 0.4rem 0; padding: 0; max-height: 50vh; overflow-y: auto; font-family: var(--font-mono); font-size: 0.82rem; }
+.picker-list li { padding: 0.12rem 0; }
+.picker-actions { display: flex; justify-content: flex-end; margin-top: 0.7rem; }
+.cfg-all { display: block; font-family: var(--font-ui); font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
 .empty { color: var(--ink-quiet); font-style: italic; }
 /* Layout : contenu + sommaire latéral droit collant (masqué sous ~1080px). */
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
@@ -966,6 +978,9 @@ h2 { scroll-margin-top: 1.2rem; }
 <button type="submit" class="primary">Appliquer au projet ({{.Diff.FilesChanged}} fichier(s))</button>
 </form>
 {{- end}}
+{{- if and $.TranscriptBase .Bundle}}
+<p><button type="button" class="export-config" data-artifact="{{.ArtifactDir}}" data-label="{{.Label}}">Exporter la conf…</button></p>
+{{- end}}
 </div>
 </div>
 </div>
@@ -1128,6 +1143,72 @@ var BENCHY_FILES = {{filesJSON .}};
   sections.forEach(function (s) { observer.observe(s); });
 })();
 </script>
+
+{{if .TranscriptBase}}
+<dialog id="cfg-export" class="picker">
+<form method="post" action="/export-config" id="cfg-form">
+<div class="picker-head">
+<strong id="cfg-title" class="picker-path">Exporter la conf</strong>
+<button type="button" id="cfg-close" aria-label="Fermer">×</button>
+</div>
+<input type="hidden" name="dir" value="{{.TranscriptBase}}">
+<input type="hidden" name="artifact" id="cfg-artifact">
+<label class="cfg-all"><input type="checkbox" id="cfg-selectall" checked> Tout sélectionner</label>
+<ul id="cfg-files" class="picker-list"></ul>
+<div class="picker-actions">
+<button type="submit" class="primary">Exporter la sélection</button>
+</div>
+</form>
+</dialog>
+<script>
+(function () {
+  var dialog = document.getElementById('cfg-export');
+  if (!dialog) { return; }
+  var list = document.getElementById('cfg-files');
+  var artifact = document.getElementById('cfg-artifact');
+  var title = document.getElementById('cfg-title');
+  var selectAll = document.getElementById('cfg-selectall');
+  var form = document.getElementById('cfg-form');
+  var dirValue = form.querySelector('[name=dir]').value;
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.export-config');
+    if (!btn) { return; }
+    artifact.value = btn.dataset.artifact;
+    title.textContent = 'Exporter la conf — ' + btn.dataset.label;
+    list.innerHTML = '<li class="muted">Chargement…</li>';
+    selectAll.checked = true;
+    fetch('/config-files?dir=' + encodeURIComponent(dirValue) + '&artifact=' + encodeURIComponent(btn.dataset.artifact))
+      .then(function (r) { return r.ok ? r.json() : r.text().then(function (t) { throw new Error(t); }); })
+      .then(function (data) {
+        list.innerHTML = '';
+        (data.files || []).forEach(function (f) {
+          var li = document.createElement('li');
+          var lab = document.createElement('label');
+          var cb = document.createElement('input');
+          cb.type = 'checkbox'; cb.name = 'files'; cb.value = f; cb.checked = true;
+          lab.appendChild(cb); lab.appendChild(document.createTextNode(' ' + f));
+          li.appendChild(lab); list.appendChild(li);
+        });
+      })
+      .catch(function (err) { list.innerHTML = '<li class="err">' + (err.message || 'erreur') + '</li>'; });
+    dialog.showModal();
+  });
+
+  selectAll.addEventListener('change', function () {
+    list.querySelectorAll('input[name=files]').forEach(function (cb) { cb.checked = selectAll.checked; });
+  });
+  document.getElementById('cfg-close').addEventListener('click', function () { dialog.close(); });
+  form.addEventListener('submit', function (e) {
+    var n = list.querySelectorAll('input[name=files]:checked').length;
+    if (n === 0) { e.preventDefault(); return; }
+    if (!confirm('Exporter ' + n + ' fichier(s) de conf sur le projet testé ? Les fichiers existants seront écrasés (non committé).')) {
+      e.preventDefault();
+    }
+  });
+})();
+</script>
+{{end}}
 </body>
 </html>
 `

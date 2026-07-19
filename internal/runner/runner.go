@@ -66,6 +66,9 @@ type runMeta struct {
 	Config string `json:"config"`
 	Run    int    `json:"run"`
 	Model  string `json:"model"`
+	// Bundle is the resolved config bundle directory, recorded so the report can
+	// offer to export the config's files onto the project under test.
+	Bundle string `json:"bundle,omitempty"`
 }
 
 // Run executes every job described by s, writing artifacts under outputRoot,
@@ -132,7 +135,7 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 	workspaceDir := filepath.Join(artifactDir, "workspace")
 
 	_ = os.MkdirAll(artifactDir, 0o755)
-	writeJSON(filepath.Join(artifactDir, "meta.json"), runMeta{Config: j.config.Name, Run: j.run, Model: j.config.Model})
+	writeJSON(filepath.Join(artifactDir, "meta.json"), runMeta{Config: j.config.Name, Run: j.run, Model: j.config.Model, Bundle: j.config.Bundle})
 	opts.log("▶ %-18s démarrage (%s)", rel, j.config.Model)
 	opts.agent(AgentEvent{Agent: rel, Status: "running"})
 

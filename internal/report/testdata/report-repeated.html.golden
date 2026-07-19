@@ -200,6 +200,18 @@ ul.ftree { list-style: none; margin: 0; padding-left: 0.9rem; font-family: var(-
 .ftree li.file.modified::before { content: "~ "; color: var(--ink-quiet); }
 .ftree-legend { color: var(--ink-quiet); font-size: 0.85rem; }
 .ftree-legend .added { color: var(--add-fg); } .ftree-legend .removed { color: var(--del-fg); }
+button.primary { font-family: var(--font-ui); font-weight: 600; font-size: 0.85rem; border: 1px solid var(--border-strong);
+  background: var(--accent); color: var(--accent-ink); border-radius: var(--r-ctl); padding: 0.4rem 0.8rem; cursor: pointer; }
+button.export-config { font-family: var(--font-ui); font-size: 0.85rem; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--ink); border-radius: var(--r-ctl); padding: 0.35rem 0.7rem; cursor: pointer; }
+dialog.picker { border: 1px solid var(--border-strong); border-radius: var(--r-card); padding: 1rem; max-width: 560px; width: 90vw; color: var(--ink); background: var(--surface); }
+dialog.picker::backdrop { background: rgba(0, 0, 0, 0.4); }
+.picker-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+.picker-head button { border: 0; background: none; font-size: 1.3rem; line-height: 1; cursor: pointer; color: var(--ink); }
+.picker-list { list-style: none; margin: 0.4rem 0; padding: 0; max-height: 50vh; overflow-y: auto; font-family: var(--font-mono); font-size: 0.82rem; }
+.picker-list li { padding: 0.12rem 0; }
+.picker-actions { display: flex; justify-content: flex-end; margin-top: 0.7rem; }
+.cfg-all { display: block; font-family: var(--font-ui); font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
 .empty { color: var(--ink-quiet); font-style: italic; }
  
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
@@ -764,5 +776,7 @@ var BENCHY_FILES = {"labels":null,"files":{}};
   sections.forEach(function (s) { observer.observe(s); });
 })();
 </script>
+
+
 </body>
 </html>
