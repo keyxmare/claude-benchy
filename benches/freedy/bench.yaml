@@ -1,8 +1,9 @@
-# Banc : effet d'une rule/skill de tests Go sur le projet freedy.
-# Prompt volontairement neutre (génération de tests, rien de plus) : c'est la
-# config (rule/skill) qui doit apporter la méthode, pas la consigne. Les
-# critères de qualité vivent dans evaluate.rubric.
-prompt: Écris les tests unitaires manquants de ce projet Go.
+# Banc : effet d'une rule/skill de documentation sur le projet freedy.
+# Prompt volontairement neutre (documenter, rien de plus) : c'est la config
+# (rule/skill + templates) qui doit apporter la méthode et l'exigence, pas la
+# consigne. Les critères de qualité vivent dans evaluate.rubric ; les checks
+# sont des garde-fous déterministes qui montent à l'échelle avec le projet.
+prompt: Documente ce projet Go.
 app: ../../../freedy
 model: sonnet
 runs: 1
@@ -15,19 +16,43 @@ output: ./results
 keepBaseConfig: true
 evaluate:
   rubric:
-    - "Couvre la logique testable (fonctions pures : calcul, mise à l'échelle, formats, transformations)"
-    - "N'introduit pas de dépendance au GPU, à X11 ni à syscall/js dans les tests"
-    - "Tests idiomatiques Go : table-driven, cas limites, déterministes"
-  # On évite go vet/test ./... en natif : les paquets GUI de freedy dépendent de
-  # GLFW/X11, absents de l'image sandbox. Natif limité à ./internal/... (logique
-  # testable) ; le projet entier n'est vérifié qu'en wasm (cible web, sans X11).
+    - "Rend autonome tout lecteur quel que soit son profil (dev, PO, expert métier, nouvel arrivant, non-initié) : index d'entrée par public, fonctionnel sans jargon, architecture pour dev"
+    - "Permet de reconstruire le projet à l'identique : user stories + critères d'acceptation (Gherkin), cas de test, cas limites et non triviaux, invariants, commandes de build et configuration"
+    - "Fournit les artefacts clés : matrice de traçabilité (feature → US → tests → code) citant de vrais tests, ADR pour les décisions non triviales, diagrammes Mermaid pour les flux"
+    - "Découpe pertinente et scalable : une page par unité (package / fonctionnalité), un index de navigation par dossier, aucune redite (information à une seule source, reliée par liens)"
+    - "Fidèle au code, sans invention ni doc de code mort ; ne modifie ni le code, ni les tests, ni la configuration"
+    - "Rédigée en français, en Markdown, pages reliées, gabarits entièrement remplis (aucun placeholder résiduel)"
+  # Garde-fous déterministes exécutés dans le sandbox (image golang bookworm :
+  # go, grep GNU, find, sort disponibles). Passe si exit 0.
   checks:
-    - name: "go vet (internal, natif)"
+    - name: "backbone de doc présent"
+      run: "test -f docs/index.md && test -f docs/architecture/index.md && test -f docs/fonctionnel/index.md && test -f docs/domaine/glossaire.md && test -f docs/domaine/regles-metier.md && test -f docs/traceabilite.md && test -d docs/architecture/decisions"
+    - name: "une page d'architecture par package internal"
+      run: |
+        mod=$(go list -m) || exit 1
+        rc=0
+        for p in $(go list ./internal/...); do
+          rel=${p#"$mod"/}
+          [ -f "docs/architecture/$rel.md" ] || { echo "manque docs/architecture/$rel.md"; rc=1; }
+        done
+        exit $rc
+    - name: "matrice ancrée dans de vrais tests"
+      run: |
+        tests=$(find . -name '*_test.go' -exec grep -hoE 'Test[A-Za-z0-9_]+' {} + | sort -u)
+        [ -z "$tests" ] && exit 0
+        for t in $tests; do
+          grep -rq "$t" docs && exit 0
+        done
+        echo "aucun test réel cité dans docs/"; exit 1
+    - name: "aucun placeholder résiduel dans docs"
+      run: |
+        if grep -rn 'TODO' docs >/dev/null 2>&1; then
+          echo "placeholder TODO résiduel :"; grep -rn 'TODO' docs | head
+          exit 1
+        fi
+        exit 0
+    - name: "code non modifié (compile, natif)"
       run: "go vet ./internal/..."
-    - name: "go vet (projet, wasm)"
-      run: "GOOS=js GOARCH=wasm go vet ./..."
-    - name: "go test (internal)"
-      run: "go test ./internal/..."
 configs:
   - name: vanilla
     bundle: ./configs/vanilla
