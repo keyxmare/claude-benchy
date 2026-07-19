@@ -54,7 +54,7 @@ func isGitRepo(dir string) bool {
 
 // gitArchive extracts the committed tree of app (HEAD) into dst.
 func gitArchive(app, dst string) error {
-	archive := exec.Command("git", "-C", app, "archive", "--format=tar", "HEAD")
+	archive := exec.Command("git", "-c", "safe.directory=*", "-C", app, "archive", "--format=tar", "HEAD")
 	untar := exec.Command("tar", "-x", "-C", dst)
 
 	r, w := io.Pipe()
@@ -93,7 +93,9 @@ func gitBaseline(dir string) error {
 		{"commit", "-q", "--no-gpg-sign", "-m", "baseline"},
 	}
 	for _, args := range steps {
-		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+		// See diffcap: containerised git over a bind-mounted workspace needs the
+		// ownership check disabled or it aborts with "dubious ownership".
+		cmd := exec.Command("git", append([]string{"-c", "safe.directory=*", "-C", dir}, args...)...)
 		cmd.Env = env
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git %v: %w: %s", args, err, out)

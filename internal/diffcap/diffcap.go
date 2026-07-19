@@ -61,7 +61,12 @@ func parseNumstat(out string) Stats {
 }
 
 func git(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	// safe.directory=* disables git's ownership check: the dashboard runs git
+	// (as root, in a container) over a bind-mounted workspace whose files git
+	// sees as owned by another user, which otherwise aborts with "dubious
+	// ownership". These workspaces are throwaway and fully owned by benchy.
+	full := append([]string{"-c", "safe.directory=*", "-C", dir}, args...)
+	cmd := exec.Command("git", full...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("git %v: %w: %s", args, err, out)
