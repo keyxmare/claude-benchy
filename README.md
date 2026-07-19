@@ -55,7 +55,13 @@ laquelle produit la meilleure modification sur une app de référence.
 ```sh
 make build          # produit ./benchy
 make image          # construit l'image de bac à sable claude-benchy:latest
+make image-go       # variante avec toolchain Go : claude-benchy-go:latest
 ```
+
+`make image-go` bâtit l'image sandbox embarquant le toolchain Go, requise par
+les bancs dont les `checks` lancent `go test`/`vet`/`build` (p. ex.
+`benches/freedy`, qui déclare `sandbox.image: claude-benchy-go:latest`). Un banc
+qui pointe une image absente échoue avec `docker run: exit status 125`.
 
 L'image épingle la version du CLI `claude` (défaut : celle du dépôt).
 Pour en cibler une autre :
@@ -265,6 +271,7 @@ sandbox fonctionnent donc à l'identique de l'exécution sur l'hôte.
 cp .env.dist .env   # ajuste les chemins hôte si besoin (home, racine projets)
 make creds          # macOS : exporte les creds du Trousseau (host, une fois)
 make image          # l'image sandbox doit exister sur le daemon hôte
+make image-go       # + variante Go si un banc la cible (p. ex. freedy)
 ```
 
 - `.env` (non versionné) fixe `BENCHY_PROJECTS_ROOT`, `BENCHY_CLAUDE_DIR` et
@@ -280,9 +287,12 @@ make image          # l'image sandbox doit exister sur le daemon hôte
 - **En autonome** (sans Orbit) : `make up` publie aussi le dashboard sur
   `http://127.0.0.1:8080`. `make down` l'arrête, `make logs` suit ses logs.
 
-> Prérequis : l'image sandbox `claude-benchy:latest` doit être présente sur le
-> daemon hôte (`make image`) et une session Claude authentifiée sur l'hôte (cf.
-> Prérequis). Le conteneur benchy ne rebâtit pas l'image sandbox.
+> Prérequis : l'image sandbox ciblée par le banc doit être présente sur le
+> daemon hôte — `claude-benchy:latest` (`make image`), plus toute variante
+> déclarée en `sandbox.image` comme `claude-benchy-go:latest` (`make image-go`)
+> — et une session Claude authentifiée sur l'hôte (cf. Prérequis). Le conteneur
+> benchy ne rebâtit pas l'image sandbox ; une image absente donne
+> `docker run: exit status 125`.
 
 ## Isolation & sécurité
 

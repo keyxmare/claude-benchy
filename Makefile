@@ -1,5 +1,6 @@
 BINARY := benchy
 IMAGE := claude-benchy:latest
+IMAGE_GO := claude-benchy-go:latest
 
 # Whole Go toolchain runs in Docker: nothing but docker is required on the host.
 TOOLS := docker compose -f compose.tools.yaml
@@ -16,7 +17,7 @@ GOARCH := $(if $(filter x86_64,$(HOST_ARCH)),amd64,$(HOST_ARCH))
 KEYCHAIN_SERVICE := Claude Code-credentials
 CLAUDE_DIR ?= $(HOME)/.claude
 
-.PHONY: build serve up down logs creds test fmt fmt-check vet lint check check-fast image clean
+.PHONY: build serve up down logs creds test fmt fmt-check vet lint check check-fast image image-go clean
 
 build:
 	$(GO) env GOOS=$(HOST_OS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -o $(BINARY) ./cmd/benchy
@@ -71,6 +72,11 @@ check-fast: fmt-check vet lint
 
 image:
 	docker build -t $(IMAGE) build/docker
+
+# Sandbox image bundling the Go toolchain, used by benches whose checks run
+# go test/vet/build (e.g. benches/freedy, sandbox.image: claude-benchy-go:latest).
+image-go:
+	docker build -t $(IMAGE_GO) -f build/docker/Dockerfile.golang build/docker
 
 clean:
 	rm -f $(BINARY)
