@@ -86,7 +86,7 @@ Pour configurer, lancer et parcourir les bancs depuis le navigateur plutôt
 qu'en éditant un fichier de banc :
 
 ```sh
-./benchy serve                 # http://127.0.0.1:8080
+./benchy serve                 # http://127.0.0.1 (port 80)
 ```
 
 - **Nouveau bench** : un formulaire couvre tous les inputs du fichier de banc
@@ -115,7 +115,7 @@ qu'en éditant un fichier de banc :
 Chaque run lancé depuis l'interface persiste aussi le `bench.yaml` soumis dans
 son dossier de résultats (reproductibilité ; rejouable via `benchy run`).
 
-Options : `--addr` (défaut `127.0.0.1:8080`), `--root` (dossier scanné pour
+Options : `--addr` (défaut `127.0.0.1:80`), `--root` (dossier scanné pour
 l'historique et base des chemins relatifs du formulaire, défaut `.`), `--image`
 (image de bac à sable par défaut).
 
@@ -285,7 +285,7 @@ make image-go       # + variante Go si un banc la cible (p. ex. freedy)
   Traefik et neutralise le port publié ; la santé remonte du healthcheck du
   conteneur.
 - **En autonome** (sans Orbit) : `make up` publie aussi le dashboard sur
-  `http://127.0.0.1:8080`. `make down` l'arrête, `make logs` suit ses logs.
+  `http://127.0.0.1` (port 80). `make down` l'arrête, `make logs` suit ses logs.
 
 > Prérequis : l'image sandbox ciblée par le banc doit être présente sur le
 > daemon hôte — `claude-benchy:latest` (`make image`), plus toute variante

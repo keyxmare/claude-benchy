@@ -4,7 +4,7 @@ services:
     command:
       - serve
       - --addr
-      - 0.0.0.0:8080
+      - 0.0.0.0:80
       - --root
       - ${BENCHY_ROOT:-/Users/keyxmare/Projects/github.com/keyxmare/claude-benchy}
     working_dir: ${BENCHY_ROOT:-/Users/keyxmare/Projects/github.com/keyxmare/claude-benchy}
@@ -15,9 +15,9 @@ services:
       - ${BENCHY_CLAUDE_DIR:-/Users/keyxmare/.claude}:${BENCHY_CLAUDE_DIR:-/Users/keyxmare/.claude}
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:80:80"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/"]
+      test: ["CMD", "curl", "-fsS", "http://localhost/"]
       interval: 10s
       timeout: 3s
       retries: 3

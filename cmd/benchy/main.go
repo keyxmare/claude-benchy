@@ -19,7 +19,7 @@ import (
 	"github.com/keyxmare/claude-benchy/internal/spec"
 )
 
-const defaultAddr = "127.0.0.1:8080"
+const defaultAddr = "127.0.0.1:80"
 
 const (
 	defaultImage      = "claude-benchy:latest"
