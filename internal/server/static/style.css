@@ -21,17 +21,8 @@
   --font-ui: 'Inter', 'Montserrat', system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
+  color-scheme: light;
   font-family: var(--font-body);
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #000000; --surface: #111111; --surface-quiet: #1a1a1a;
-    --ink: #ffffff; --ink-quiet: var(--mb-grey-500);
-    --border: var(--mb-grey-800); --border-strong: var(--mb-grey-500);
-    --accent: var(--mb-yellow-500); --accent-ink: #000000; --accent-text: var(--mb-yellow-500);
-    --brand-bg: #ffffff; --brand-ink: #000000;
-    --ok: #3fb84f; --err: #ff5a6a; --warn: var(--mb-yellow-500);
-  }
 }
 
 * { box-sizing: border-box; }

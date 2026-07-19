@@ -405,23 +405,22 @@ const htmlSource = `<!doctype html>
   --font-body: 'Montserrat', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-ui: 'Inter', 'Montserrat', system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #000000; --surface: #111111; --surface-quiet: #1a1a1a;
-    --ink: #ffffff; --ink-quiet: var(--mb-grey-500);
-    --border: var(--mb-grey-800); --border-strong: var(--mb-grey-500);
-    --accent: var(--mb-yellow-500); --accent-ink: #000000; --accent-text: var(--mb-yellow-500);
-    --brand-bg: #ffffff; --brand-ink: #000000;
-    --ok: #3fb84f; --err: #ff5a6a; --warn: var(--mb-yellow-500);
-    --add-bg: #0f2417; --add-fg: #4ec36a; --del-bg: #2a0f14; --del-fg: #ff6b78; --hunk: #7fb4d0;
-  }
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 body { font-family: var(--font-body); margin: 0; max-width: none;
   padding: 2.5rem clamp(1.25rem, 3vw, 3rem) 4rem;
   background: var(--bg); color: var(--ink); line-height: 1.55; font-size: 16px;
   -webkit-font-smoothing: antialiased; }
+.topbar { display: flex; align-items: baseline; gap: 1rem;
+  margin: -2.5rem calc(-1 * clamp(1.25rem, 3vw, 3rem)) 2rem;
+  padding: 0.9rem clamp(1.25rem, 3vw, 3rem);
+  background: var(--brand-bg); color: var(--brand-ink); }
+.topbar .brand { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.02em;
+  text-transform: lowercase; font-size: 1.2rem; }
+.topbar .brand a { color: inherit; text-decoration: none; }
+.topbar .root { color: color-mix(in srgb, var(--brand-ink) 60%, transparent);
+  font-size: 0.8rem; font-family: var(--font-mono); }
 h1 { font-family: var(--font-display); font-weight: 800; font-style: italic; text-transform: uppercase;
   letter-spacing: -0.01em; line-height: 1.02; font-size: clamp(2.2rem, 6vw, 3.4rem);
   margin: 0 0 0.3rem; text-wrap: balance; }
@@ -590,7 +589,11 @@ h2 { scroll-margin-top: 1.2rem; }
 </style>
 </head>
 <body>
-{{if .HomeURL}}<p class="backlink"><a href="{{.HomeURL}}">← Accueil</a>{{if .ReuseURL}} &nbsp;·&nbsp; <a href="{{.ReuseURL}}">Reprendre cette config</a>{{end}}</p>
+<header class="topbar">
+  <span class="brand">{{if .HomeURL}}<a href="{{.HomeURL}}">benchy</a>{{else}}benchy{{end}}</span>
+  <span class="root">rapport</span>
+</header>
+{{if .ReuseURL}}<p class="backlink"><a href="{{.ReuseURL}}">Reprendre cette config</a></p>
 {{end}}<h1>Rapport claude-benchy</h1>
 <p class="meta-list"><strong>Généré :</strong> {{.GeneratedAt}} &nbsp;·&nbsp; <strong>App :</strong> <code>{{.App}}</code></p>
 
