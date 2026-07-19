@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // Container paths used by the sandbox image.
@@ -44,15 +45,49 @@ func NewCLI() *CLI {
 	return &CLI{Bin: "docker"}
 }
 
-// Run executes the sandbox container and streams its output.
+// Run executes the sandbox container and streams its output. On failure the
+// error carries the tail of the container's stderr — for a daemon-level failure
+// (missing image, bad mount) this is the only diagnostic, so surfacing it turns
+// an opaque "exit status 125" into an actionable message.
 func (c *CLI) Run(ctx context.Context, spec RunSpec, stdout, stderr io.Writer) error {
+	var tail tailWriter
 	cmd := exec.CommandContext(ctx, c.Bin, RunArgs(spec)...)
 	cmd.Stdout = stdout
-	cmd.Stderr = stderr
+	if stderr != nil {
+		cmd.Stderr = io.MultiWriter(stderr, &tail)
+	} else {
+		cmd.Stderr = &tail
+	}
 	if err := cmd.Run(); err != nil {
+		if msg := tail.oneLine(); msg != "" {
+			return fmt.Errorf("docker run: %w: %s", err, msg)
+		}
 		return fmt.Errorf("docker run: %w", err)
 	}
 	return nil
+}
+
+// tailWriter keeps only the last maxTail bytes written to it, so a verbose
+// stream leaves a bounded, still-useful excerpt for error messages.
+type tailWriter struct {
+	buf []byte
+}
+
+const maxTail = 512
+
+func (w *tailWriter) Write(p []byte) (int, error) {
+	w.buf = append(w.buf, p...)
+	if len(w.buf) > maxTail {
+		w.buf = w.buf[len(w.buf)-maxTail:]
+	}
+	return len(p), nil
+}
+
+// oneLine returns the retained tail trimmed and flattened to a single line so
+// it stays legible when folded into an error or a progress log.
+func (w *tailWriter) oneLine() string {
+	s := strings.TrimSpace(string(w.buf))
+	return strings.Join(strings.Fields(s), " ")
 }
 
 // Build builds the sandbox image from contextDir. When dockerfile is non-empty
