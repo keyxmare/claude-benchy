@@ -35,6 +35,14 @@ auto-hébergées / inlinées en `@font-face` — à demander si besoin.
 Cas d'usage : écrire une skill/rule, la décliner en variantes, et voir
 laquelle produit la meilleure modification sur une app de référence.
 
+## Documentation
+
+La documentation vivante du projet est dans [`docs/`](docs/index.md) :
+architecture (une page par package, décisions/ADR), fonctionnel (user stories et
+parcours), domaine (glossaire, règles métier) et
+[matrice de traçabilité](docs/traceabilite.md). Point d'entrée par profil :
+[`docs/index.md`](docs/index.md).
+
 ## Prérequis
 
 - **Docker uniquement** : tout le toolchain Go (build, tests, lint) tourne en
