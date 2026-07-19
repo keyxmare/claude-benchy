@@ -481,3 +481,186 @@ func TestRankSymbol(t *testing.T) {
 		}
 	}
 }
+
+func TestEvaluationForUnknownLabel(t *testing.T) {
+	e := &report.Evaluation{Configs: []report.ConfigEval{{Label: "vanilla", Score: 80}}}
+
+	got := e.For("missing")
+
+	if diff := cmp.Diff(report.ConfigEval{}, got); diff != "" {
+		t.Errorf("For(unknown) should be the zero ConfigEval (-want +got):\n%s", diff)
+	}
+}
+
+func TestConfigEvalLevelAndNoteUnknownCriterion(t *testing.T) {
+	c := report.ConfigEval{Criteria: []report.CriterionEval{{Criterion: "c1", Level: "respecté", Note: "ok"}}}
+
+	if got := c.Level("absent"); got != "" {
+		t.Errorf("Level(unknown) = %q, want empty", got)
+	}
+	if got := c.Note("absent"); got != "" {
+		t.Errorf("Note(unknown) = %q, want empty", got)
+	}
+}
+
+func TestConfigScoreLevelOfAndNoteOfUnknownCriterion(t *testing.T) {
+	c := report.ConfigScore{Criteria: []report.CriterionAgg{{Criterion: "c1", Level: "respecté", Note: "ok"}}}
+
+	if got := c.LevelOf("absent"); got != "" {
+		t.Errorf("LevelOf(unknown) = %q, want empty", got)
+	}
+	if got := c.NoteOf("absent"); got != "" {
+		t.Errorf("NoteOf(unknown) = %q, want empty", got)
+	}
+}
+
+func TestSynthesisNoSuccessfulRun(t *testing.T) {
+	r := report.Report{Runs: []report.RunReport{{Config: "x", Err: "boom"}}}
+
+	got := r.Synthesis()
+
+	want := []string{"Aucun run réussi : voir les erreurs par config."}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Synthesis() with no OK run mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// TestEvalByConfigRepresentativeClosestToMean pins the representative-run choice
+// to the run whose score is nearest the mean when it is not the first run.
+func TestEvalByConfigRepresentativeClosestToMean(t *testing.T) {
+	okRun := func(run int) report.RunReport {
+		return report.RunReport{Config: "c", Run: run, Model: "sonnet",
+			Metrics: claude.Metrics{ToolUses: 3}, Diff: diffcap.Stats{FilesChanged: 1}}
+	}
+	r := report.Report{
+		Runs: []report.RunReport{okRun(1), okRun(2), okRun(3)},
+		Evaluation: &report.Evaluation{
+			Rubric: []string{"c1"},
+			Configs: []report.ConfigEval{
+				{Label: "c", Score: 100, Verdict: "run 1", Criteria: []report.CriterionEval{{Criterion: "c1", Level: "respecté"}}},
+				{Label: "c · run 2", Score: 0, Verdict: "run 2", Criteria: []report.CriterionEval{{Criterion: "c1", Level: "non"}}},
+				{Label: "c · run 3", Score: 50, Verdict: "run 3", Criteria: []report.CriterionEval{{Criterion: "c1", Level: "partiel"}}},
+			},
+		},
+	}
+
+	got := r.EvalByConfig()
+
+	if len(got) != 1 {
+		t.Fatalf("expected 1 config, got %d", len(got))
+	}
+	// mean = round((100+0+50)/3) = 50; run 3 (score 50) is closest, not run 1.
+	if got[0].Verdict != "run 3" {
+		t.Errorf("representative verdict = %q, want run 3's", got[0].Verdict)
+	}
+}
+
+// TestAnalysisFlagsSuccessfulRunWithoutChanges covers an OK run that touched a
+// file but produced no line change (changeSize 0): it earns the "no change"
+// weakness and never the widest-scope strength.
+func TestAnalysisFlagsSuccessfulRunWithoutChanges(t *testing.T) {
+	noChange := func(cfg string, cost float64, turns int) report.RunReport {
+		return report.RunReport{Config: cfg, Run: 1, Model: "sonnet",
+			Metrics: claude.Metrics{ToolUses: 2, NumTurns: turns, DurationMS: 1000, TotalCostUSD: cost},
+			Diff:    diffcap.Stats{FilesChanged: 1, Insertions: 0, Deletions: 0}}
+	}
+	r := report.Report{Runs: []report.RunReport{noChange("a", 0.01, 2), noChange("b", 0.02, 3)}}
+
+	a := r.Analysis()
+
+	for _, label := range []string{"a", "b"} {
+		v := verdict(a, label)
+		if !hasSubstr(v.Weaknesses, "Aucune modification produite") {
+			t.Errorf("%s should be flagged for producing no change, got %v", label, v.Weaknesses)
+		}
+		if hasSubstr(v.Strengths, "Périmètre traité le plus large") {
+			t.Errorf("%s should not own widest scope when nothing changed, got %v", label, v.Strengths)
+		}
+	}
+}
+
+// TestRecommendBaselineHeavierWithoutWiderScope covers the lead that fires when
+// the non-baseline configs cost more (dc > 0) without widening the change set
+// (dsz <= 0). It also exercises the "baseline"-named reference branch.
+func TestRecommendBaselineHeavierWithoutWiderScope(t *testing.T) {
+	base := report.RunReport{Config: "baseline", Run: 1, Model: "sonnet",
+		Metrics: claude.Metrics{ToolUses: 3, NumTurns: 2, DurationMS: 1000, TotalCostUSD: 0.01},
+		Diff:    diffcap.Stats{FilesChanged: 1, Insertions: 100, Deletions: 0}}
+	other := report.RunReport{Config: "strict", Run: 1, Model: "sonnet",
+		Metrics: claude.Metrics{ToolUses: 4, NumTurns: 3, DurationMS: 2000, TotalCostUSD: 0.02},
+		Diff:    diffcap.Stats{FilesChanged: 1, Insertions: 10, Deletions: 0}}
+	r := report.Report{Runs: []report.RunReport{base, other}}
+
+	recs := r.Analysis().Recommendations
+
+	if !hasSubstr(recs, "Face à **baseline**") {
+		t.Errorf("expected a baseline comparison lead, got %v", recs)
+	}
+	if !hasSubstr(recs, "les instructions ajoutées pèsent") {
+		t.Errorf("expected the heavier-without-wider lead, got %v", recs)
+	}
+}
+
+func TestRecommendWithoutBaseline(t *testing.T) {
+	run := func(cfg string, cost float64, turns int) report.RunReport {
+		return report.RunReport{Config: cfg, Run: 1, Model: "sonnet",
+			Metrics: claude.Metrics{ToolUses: 2, NumTurns: turns, DurationMS: 1000, TotalCostUSD: cost},
+			Diff:    diffcap.Stats{FilesChanged: 1, Insertions: 5, Deletions: 0}}
+	}
+	r := report.Report{Runs: []report.RunReport{run("alpha", 0.01, 2), run("beta", 0.02, 3)}}
+
+	recs := r.Analysis().Recommendations
+
+	if hasSubstr(recs, "Face à") {
+		t.Errorf("no baseline config: no baseline comparison expected, got %v", recs)
+	}
+	if !hasSubstr(recs, "Meilleur compromis") {
+		t.Errorf("expected the best-compromise lead, got %v", recs)
+	}
+}
+
+// TestWrite covers the happy path and both os.Create error returns. The
+// remaining branch — WriteMarkdown returning an error — is unreachable here: it
+// executes a template that invokes no error-returning func or method over a
+// freshly created *os.File, so it can only fail on a write error a temp file
+// never produces. It stays justified, not tested.
+func TestWrite(t *testing.T) {
+	t.Run("writes both documents", func(t *testing.T) {
+		dir := t.TempDir()
+
+		if err := report.Write(dir, sample()); err != nil {
+			t.Fatalf("Write() = %v, want nil", err)
+		}
+
+		for _, name := range []string{"report.md", "report.html"} {
+			b, err := os.ReadFile(filepath.Join(dir, name))
+			if err != nil {
+				t.Fatalf("reading %s: %v", name, err)
+			}
+			if len(b) == 0 {
+				t.Errorf("%s is empty", name)
+			}
+		}
+	})
+
+	t.Run("markdown create error on a missing directory", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "does-not-exist")
+
+		if err := report.Write(dir, sample()); err == nil {
+			t.Error("Write() to a nonexistent directory = nil, want error")
+		}
+	})
+
+	t.Run("html create error", func(t *testing.T) {
+		dir := t.TempDir()
+		// A directory named report.html makes os.Create fail after report.md
+		// was written, exercising the second create's error path.
+		if err := os.Mkdir(filepath.Join(dir, "report.html"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := report.Write(dir, sample()); err == nil {
+			t.Error("Write() with report.html as a directory = nil, want error")
+		}
+	})
+}
