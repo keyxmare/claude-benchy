@@ -17,13 +17,19 @@ GOARCH := $(if $(filter x86_64,$(HOST_ARCH)),amd64,$(HOST_ARCH))
 KEYCHAIN_SERVICE := Claude Code-credentials
 CLAUDE_DIR ?= $(HOME)/.claude
 
-.PHONY: build serve up down logs creds test fmt fmt-check vet lint check check-fast image image-go clean
+.PHONY: build serve serve-watch up down logs creds test fmt fmt-check vet lint check check-fast image image-go clean
 
 build:
 	$(GO) env GOOS=$(HOST_OS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -o $(BINARY) ./cmd/benchy
 
 serve: build
 	./$(BINARY) serve
+
+# Dev dashboard: rebuild (Docker) and restart the native server on every change
+# to a Go source or an embedded template/asset. Forward flags via ARGS, e.g.
+# `make serve-watch ARGS="--addr 127.0.0.1:8080"`.
+serve-watch:
+	BINARY=./$(BINARY) ./scripts/serve-watch.sh $(ARGS)
 
 up:
 	docker compose up -d --build

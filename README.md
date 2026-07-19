@@ -98,6 +98,13 @@ qu'en éditant un fichier de banc :
 ./benchy serve                 # http://127.0.0.1 (port 80)
 ```
 
+Les templates HTML et le CSS sont **embarqués dans le binaire** (`go:embed`) :
+toute modification de l'UI exige un rebuild. Pour le développement,
+`make serve-watch` rebuild (via Docker) et relance le serveur natif à chaque
+changement d'un source Go ou d'un template/asset — flags transmis via `ARGS`,
+p. ex. `make serve-watch ARGS="--addr 127.0.0.1:8080"` (utile si le port 80 est
+déjà pris par le conteneur `docker compose up`).
+
 - **Nouveau bench** : un formulaire couvre tous les inputs du fichier de banc
   (prompt, app, model, runs, configs, rubric, checks…) ; « Lancer » démarre le
   run et **diffuse la progression live**, puis affiche le lien du rapport.
