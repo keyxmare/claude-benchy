@@ -24,33 +24,18 @@ evaluate:
     - "Rédigée en français, en Markdown, pages reliées, gabarits entièrement remplis (aucun placeholder résiduel)"
   # Garde-fous déterministes exécutés dans le sandbox (image golang bookworm :
   # go, grep GNU, find, sort disponibles). Passe si exit 0.
+  # Chaque check tient sur UNE ligne : le formulaire du dashboard aplatit les
+  # scalaires multilignes (les sauts de ligne seraient perdus), ce qui casserait
+  # un script `run: |`. On enchaîne donc par `;` / `&&`.
   checks:
     - name: "backbone de doc présent"
       run: "test -f docs/index.md && test -f docs/architecture/index.md && test -f docs/fonctionnel/index.md && test -f docs/domaine/glossaire.md && test -f docs/domaine/regles-metier.md && test -f docs/traceabilite.md && test -d docs/architecture/decisions"
     - name: "une page d'architecture par package internal"
-      run: |
-        mod=$(go list -m) || exit 1
-        rc=0
-        for p in $(go list ./internal/...); do
-          rel=${p#"$mod"/}
-          [ -f "docs/architecture/$rel.md" ] || { echo "manque docs/architecture/$rel.md"; rc=1; }
-        done
-        exit $rc
+      run: "rc=0; for d in $(find internal -type d); do ls \"$d\"/*.go >/dev/null 2>&1 && { [ -f \"docs/architecture/$d.md\" ] || { echo \"manque docs/architecture/$d.md\"; rc=1; }; }; done; exit $rc"
     - name: "matrice ancrée dans de vrais tests"
-      run: |
-        tests=$(find . -name '*_test.go' -exec grep -hoE 'Test[A-Za-z0-9_]+' {} + | sort -u)
-        [ -z "$tests" ] && exit 0
-        for t in $tests; do
-          grep -rq "$t" docs && exit 0
-        done
-        echo "aucun test réel cité dans docs/"; exit 1
+      run: "tests=$(find . -name '*_test.go' -exec grep -hoE 'Test[A-Za-z0-9_]+' {} + | sort -u); [ -z \"$tests\" ] && exit 0; for t in $tests; do grep -rq \"$t\" docs && exit 0; done; echo 'aucun test réel cité'; exit 1"
     - name: "aucun placeholder résiduel dans docs"
-      run: |
-        if grep -rn 'TODO' docs >/dev/null 2>&1; then
-          echo "placeholder TODO résiduel :"; grep -rn 'TODO' docs | head
-          exit 1
-        fi
-        exit 0
+      run: "! grep -rq 'TODO' docs"
     - name: "code non modifié (compile, natif)"
       run: "go vet ./internal/..."
 configs:

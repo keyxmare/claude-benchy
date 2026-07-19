@@ -27,13 +27,18 @@ sans page fourre-tout :
 - `docs/index.md` — **index par public** : oriente chaque profil vers son
   parcours.
 - `docs/architecture/` — le **comment** (dev) : **une page par package**,
-  nommée en miroir de l'arbre de code (`docs/architecture/internal/renderer.md`
-  pour `internal/renderer`). `docs/architecture/index.md` liste les pages ;
-  `docs/architecture/decisions/` accueille les ADR.
-- `docs/fonctionnel/` — le **quoi** (sans jargon) : **une page par
-  fonctionnalité / parcours**, plus `docs/fonctionnel/index.md`.
-- `docs/domaine/` — le **pourquoi** : `glossaire.md` (source canonique du
-  vocabulaire) et `regles-metier.md` (règles à identifiant stable `RG-01…`).
+  nommée en **miroir exact du chemin** sous l'arbre de code
+  (`docs/architecture/internal/renderer.md` pour `internal/renderer`) — il en
+  faut une pour **chaque** dossier de `internal/` contenant du `.go`.
+  `docs/architecture/index.md` liste les pages ; `docs/architecture/decisions/`
+  accueille les ADR.
+- `docs/fonctionnel/` — le **quoi** (sans jargon), **découpé par contexte
+  métier** (voir DDD ci-dessous) : `docs/fonctionnel/<contexte>/` avec une page
+  par fonctionnalité / parcours, plus `docs/fonctionnel/index.md`.
+- `docs/domaine/` — le **pourquoi**, **découpé par contexte** : `glossaire.md`
+  (index canonique du vocabulaire) et `regles-metier.md` (index des règles à
+  identifiant stable `RG-01…`) au niveau racine, puis un dossier
+  `docs/domaine/<contexte>/` par contexte métier.
 - `docs/traceabilite.md` — la **matrice de traçabilité** (voir Artefacts).
 
 Règles de découpe :
@@ -49,6 +54,36 @@ Règles de découpe :
 - **Matrice scindable** : sur un gros projet, une sous-matrice par domaine et
   `docs/traceabilite.md` devient leur index.
 - Nommage `kebab-case` ; liens Markdown relatifs entre pages.
+
+## Découpe par contexte métier (DDD)
+
+Le fonctionnel et le domaine sont organisés par **contexte métier borné**
+(bounded context), pas en vrac : chaque contexte est un domaine cohérent avec
+son vocabulaire et ses règles propres. Sur freedy, par exemple : **rendu**
+(pipeline WebGPU, surface, frames), **texte** (rastérisation du label en
+texture), **plateforme** (fenêtre native GLFW vs canvas web, boucle de frames).
+
+- Identifier les contextes depuis le code (packages, responsabilités) et le
+  vocabulaire ; en dresser la liste avant d'écrire.
+- `docs/domaine/<contexte>/` : une page décrivant le contexte, son **glossaire**
+  local et ses **règles** (`RG-<contexte>-01…`). Les fichiers racine
+  `glossaire.md` / `regles-metier.md` en sont l'**index** (renvois par lien).
+- `docs/fonctionnel/<contexte>/` : les fonctionnalités du contexte.
+- Un terme/règle appartient à **un seul** contexte (source canonique) ; les
+  autres y renvoient. Les termes transverses vont dans le glossaire racine.
+
+## Contraintes vérifiées automatiquement (à respecter à la lettre)
+
+Des checks déterministes valident la doc — les satisfaire n'est pas optionnel :
+
+- **Une page d'architecture par package `internal/`** : pour chaque dossier de
+  `internal/` contenant du `.go`, un `docs/architecture/<chemin>.md` (miroir
+  exact du chemin, ex. `internal/label` → `docs/architecture/internal/label.md`).
+- **Matrice ancrée dans de vrais tests** : `docs/traceabilite.md` cite les
+  **noms exacts** des fonctions `func Test…` présentes dans les `*_test.go`
+  (copiés tels quels, sans reformuler).
+- **Zéro placeholder** : aucun `TODO` ni gabarit non rempli ne subsiste dans
+  `docs/` — relire et compléter chaque emplacement du template.
 
 ## Artefacts obligatoires
 

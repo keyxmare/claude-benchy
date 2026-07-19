@@ -35,11 +35,16 @@ la structure (moins de tokens, sortie reproductible).
   `docs/fonctionnel/index.md`, `docs/domaine/glossaire.md`,
   `docs/domaine/regles-metier.md`, `docs/traceabilite.md`,
   `docs/architecture/decisions/index.md`.
-- **Pages par unité** : une page architecture par **package** (miroir de
-  l'arbre), une page fonctionnel par **fonctionnalité / parcours**. Une unité =
-  une page ; si une page cumule des sujets ou devient trop longue, la scinder.
-- **Anti-duplication** : chaque terme/règle défini une seule fois (glossaire /
-  regles-metier), référencé ailleurs par lien.
+- **Contextes métier (DDD)** : lister les contextes bornés (ex. rendu, texte,
+  plateforme) ; ils structurent `docs/fonctionnel/<contexte>/` et
+  `docs/domaine/<contexte>/`.
+- **Pages par unité** : une page architecture pour **chaque dossier de
+  `internal/` contenant du `.go`**, nommée en miroir exact du chemin
+  (`internal/renderer` → `docs/architecture/internal/renderer.md`) ; une page
+  fonctionnel par fonctionnalité, rangée sous son contexte. Une unité = une
+  page ; si une page cumule des sujets ou devient trop longue, la scinder.
+- **Anti-duplication** : chaque terme/règle défini une seule fois (dans son
+  contexte), référencé ailleurs par lien.
 
 ## 3. Générer, unité par unité
 
@@ -58,18 +63,26 @@ chaque unité, copier le template adapté et le remplir depuis le code.
 - Index : chaque dossier reçoit son `index.md` qui liste et situe ses pages.
 
 Puis la **matrice de traçabilité** (template `traceabilite.md`) : feature → US →
-critères → cas de test (`*_test.go`) → code. Scinder par domaine si volumineux.
+critères → cas de test → code. Copier les **noms exacts** des fonctions
+`func Test…` des `*_test.go` (sans les reformuler). Scinder par contexte si
+volumineux.
 
 ## 4. Passe d'auto-vérification (obligatoire, avant de conclure)
 
-Relire la doc produite **contre le code** et combler les trous :
+Relire la doc produite **contre le code** et combler les trous. Les trois
+premiers points sont **vérifiés par des checks** — les rater fait échouer le
+banc :
 
-- [ ] chaque package `internal/…` a sa page architecture ;
+- [ ] **chaque dossier de `internal/` avec du `.go` a sa page**
+      `docs/architecture/<chemin>.md` (miroir exact du chemin) ;
+- [ ] **la matrice cite les noms exacts** des `func Test…` des `*_test.go`
+      (les relever par `grep -rhoE 'func Test[A-Za-z0-9_]+' --include='*_test.go'`
+      et vérifier que chacun apparaît dans `docs/`) ;
+- [ ] **aucun `TODO` résiduel** : lancer `grep -rn TODO docs` — la sortie doit
+      être vide ; sinon compléter ;
 - [ ] chaque fonctionnalité a US + critères + cas non triviaux + tests ;
-- [ ] chaque `*_test.go` apparaît dans la matrice ;
-- [ ] chaque terme métier/technique est au glossaire, chaque règle a un `RG-…` ;
+- [ ] chaque contexte a son glossaire et ses règles (`RG-<contexte>-…`) ;
 - [ ] chaque dossier a son `index.md` ; les liens relatifs résolvent ;
 - [ ] un lecteur non-technicien comprend le projet via `docs/index.md` seul ;
-- [ ] **aucun placeholder `TODO` ni gabarit non rempli** ne subsiste ;
 - [ ] le code, les tests et la configuration **n'ont pas** été modifiés ;
 - [ ] tout est en français, en Markdown.
