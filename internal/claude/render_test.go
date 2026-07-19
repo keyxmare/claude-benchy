@@ -34,6 +34,21 @@ func TestRenderAssistantTextAndTools(t *testing.T) {
 			[]string{"⏺ Edit(util/scale.go)", "  ⎿ return v*f → return v*f + off"},
 		},
 		{
+			"edit empty strings yields no snippet",
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"a.go","old_string":"","new_string":""}}]}}`,
+			[]string{"⏺ Edit(a.go)"},
+		},
+		{
+			"edit multiline old keeps first line",
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"a.go","old_string":"foo\nbar","new_string":"baz"}}]}}`,
+			[]string{"⏺ Edit(a.go)", "  ⎿ foo → baz"},
+		},
+		{
+			"bash non-string command",
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":123}}]}}`,
+			[]string{"⏺ Bash()"},
+		},
+		{
 			"read",
 			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"main.go"}}]}}`,
 			[]string{"⏺ Read(main.go)"},
@@ -64,6 +79,11 @@ func TestRenderAssistantTextAndTools(t *testing.T) {
 			[]string{"⏺ Task"},
 		},
 		{
+			"unknown tool absent input field",
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Task"}]}}`,
+			[]string{"⏺ Task"},
+		},
+		{
 			"tool result",
 			`{"type":"user","message":{"content":[{"type":"tool_result","content":"ok util\nFAIL geometry"}]}}`,
 			[]string{"  ⎿ ok util …(+1 lignes)"},
@@ -74,6 +94,21 @@ func TestRenderAssistantTextAndTools(t *testing.T) {
 			[]string{"  ⎿ ⚠ boom"},
 		},
 		{
+			"user non-tool_result block dropped",
+			`{"type":"user","message":{"content":[{"type":"text","text":"hi"}]}}`,
+			nil,
+		},
+		{
+			"tool result absent content dropped",
+			`{"type":"user","message":{"content":[{"type":"tool_result"}]}}`,
+			nil,
+		},
+		{
+			"tool result non-textual content dropped",
+			`{"type":"user","message":{"content":[{"type":"tool_result","content":42}]}}`,
+			nil,
+		},
+		{
 			"result success",
 			`{"type":"result","subtype":"success","num_turns":3,"total_cost_usd":1.2393}`,
 			[]string{"✓ terminé · 3 tours · $1.2393"},
@@ -82,6 +117,11 @@ func TestRenderAssistantTextAndTools(t *testing.T) {
 			"result error",
 			`{"type":"result","subtype":"error_max_turns","is_error":true}`,
 			[]string{"✗ échec (error_max_turns)"},
+		},
+		{
+			"result error without subtype",
+			`{"type":"result","is_error":true}`,
+			[]string{"✗ échec"},
 		},
 		{"unknown type", `{"type":"whatever"}`, nil},
 		{"blank", "   ", nil},

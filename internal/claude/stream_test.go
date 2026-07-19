@@ -1,6 +1,8 @@
 package claude_test
 
 import (
+	"encoding/json"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -54,5 +56,38 @@ func TestParseIgnoresGarbageLines(t *testing.T) {
 	}
 	if !m.IsError || m.NumTurns != 1 {
 		t.Errorf("unexpected metrics: %+v", m)
+	}
+}
+
+func TestParseSkipsBlankLines(t *testing.T) {
+	in := "\n" + `{"type":"result","num_turns":2}` + "\n\n"
+	m, err := claude.Parse(strings.NewReader(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.NumTurns != 2 {
+		t.Errorf("NumTurns = %d, want 2", m.NumTurns)
+	}
+}
+
+func TestParseResultUnmarshalError(t *testing.T) {
+	in := `{"type":"result","num_turns":"three"}` + "\n"
+	_, err := claude.Parse(strings.NewReader(in))
+	var typeErr *json.UnmarshalTypeError
+	if !errors.As(err, &typeErr) {
+		t.Fatalf("Parse() error = %v, want a *json.UnmarshalTypeError", err)
+	}
+}
+
+// errReader fails on the first read so Parse surfaces scanner.Err().
+type errReader struct{ err error }
+
+func (r errReader) Read([]byte) (int, error) { return 0, r.err }
+
+func TestParseScannerError(t *testing.T) {
+	sentinel := errors.New("read boom")
+	_, err := claude.Parse(errReader{err: sentinel})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("Parse() error = %v, want %v", err, sentinel)
 	}
 }
