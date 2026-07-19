@@ -99,6 +99,12 @@ Ils ne s'appliquent pas tous à fond : la rule fixe l'**ordre d'arbitrage**
 plancher **mesurable** (complexité, duplication, taille d'interface, gestion
 d'erreurs) est tenu par les linters de `.golangci.yml`, dans `make check`.
 
+La modélisation suit le DDD (contextes bornés = packages `internal/*`, langage
+omniprésent ancré sur `docs/domaine/`, value objects, cœur sans infra) explicité
+dans `.claude/rules/ddd.md` (`paths: **/*.go`). Cette rule est **subordonnée** à
+`go-design.md` : les patterns tactiques (agrégats, repositories, événements) se
+méritent comme OCP, et en conflit `go-design.md` tranche.
+
 ## Conventions de test
 
 Les tests Go de ce projet suivent une **exigence de couverture à 100 %**
