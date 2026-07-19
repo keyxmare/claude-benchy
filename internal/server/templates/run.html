@@ -35,17 +35,70 @@
     <p><a id="report-link" class="primary button" href="/report?dir={{.ReportDir}}" hidden>Voir le rapport</a>
        <a class="button" href="/">← Retour</a></p>
   </section>
+
+  <section class="panel" id="agents-panel" hidden>
+    <h2 class="panel-sub">Agents · sortie en direct</h2>
+    <div id="agents" class="agents"></div>
+  </section>
 </main>
 
 <script>
   var id = {{.ID}};
+  var reportDir = {{.ReportDir}};
   var log = document.getElementById('log');
   var status = document.getElementById('status');
+  var agentsPanel = document.getElementById('agents-panel');
+  var agentsBox = document.getElementById('agents');
+  var agents = {};
+
+  function agentPanel(key) {
+    if (agents[key]) { return agents[key]; }
+    agentsPanel.hidden = false;
+    var wrap = document.createElement('div');
+    wrap.className = 'agent';
+    var head = document.createElement('div');
+    head.className = 'agent-head';
+    var name = document.createElement('span');
+    name.className = 'agent-name';
+    name.textContent = key;
+    var badge = document.createElement('span');
+    badge.className = 'badge running';
+    badge.textContent = 'running';
+    var link = document.createElement('a');
+    link.className = 'agent-link';
+    link.target = '_blank';
+    link.href = '/transcript?dir=' + encodeURIComponent(reportDir + '/' + key);
+    link.textContent = 'transcript ↗';
+    head.appendChild(name);
+    head.appendChild(badge);
+    head.appendChild(link);
+    var pre = document.createElement('pre');
+    pre.className = 'console agent-log';
+    wrap.appendChild(head);
+    wrap.appendChild(pre);
+    agentsBox.appendChild(wrap);
+    agents[key] = { pre: pre, badge: badge };
+    return agents[key];
+  }
+
   var es = new EventSource('/runs/' + id + '/events');
 
   es.addEventListener('log', function (e) {
     log.textContent += e.data + '\n';
     log.scrollTop = log.scrollHeight;
+  });
+
+  es.addEventListener('agent', function (e) {
+    var ev = JSON.parse(e.data);
+    var p = agentPanel(ev.agent);
+    if (ev.line) {
+      p.pre.textContent += ev.line + '\n';
+      p.pre.scrollTop = p.pre.scrollHeight;
+    }
+    if (ev.status) {
+      p.badge.textContent = ev.status;
+      p.badge.className = 'badge ' + ev.status;
+    }
   });
 
   es.addEventListener('done', function (e) {

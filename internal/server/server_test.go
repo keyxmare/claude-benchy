@@ -111,6 +111,9 @@ func TestRunLaunchesJobAndStreamsToCompletion(t *testing.T) {
 	if !strings.Contains(stream, "event: log") {
 		t.Errorf("stream should carry progress logs, got:\n%s", stream)
 	}
+	if !strings.Contains(stream, "event: agent") {
+		t.Errorf("stream should carry per-agent events, got:\n%s", stream)
+	}
 	if !strings.Contains(stream, "event: done\ndata: done") {
 		t.Errorf("stream should end with a done event, got:\n%s", stream)
 	}
@@ -131,6 +134,28 @@ func TestRunLaunchesJobAndStreamsToCompletion(t *testing.T) {
 	}
 	if !strings.Contains(repRec.Body.String(), "baseline") {
 		t.Error("report should mention the config")
+	}
+	if !strings.Contains(repRec.Body.String(), "/transcript?dir=") {
+		t.Error("served report should link each run to its transcript")
+	}
+
+	// The per-agent transcript replays the same readable feed from disk.
+	trRec := httptest.NewRecorder()
+	h.ServeHTTP(trRec, httptest.NewRequest(http.MethodGet, "/transcript?dir="+url.QueryEscape(entries[0].Dir+"/baseline"), nil))
+	if trRec.Code != http.StatusOK {
+		t.Fatalf("transcript status = %d, want 200; body: %s", trRec.Code, trRec.Body.String())
+	}
+	if !strings.Contains(trRec.Body.String(), "✓ terminé") {
+		t.Errorf("transcript should replay the rendered feed, got:\n%s", trRec.Body.String())
+	}
+}
+
+func TestTranscriptRejectsPathTraversal(t *testing.T) {
+	srv, _ := newTestServer(t)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/transcript?dir=../../etc", nil))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 for an out-of-root dir", rec.Code)
 	}
 }
 

@@ -212,7 +212,17 @@ button.danger, .danger { border-color: var(--err); color: var(--err); background
 .badge { font-family: var(--font-display); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.15rem 0.55rem; border-radius: var(--r-full); border: 1px solid transparent; }
 .badge.running { color: var(--warn); background: color-mix(in srgb, var(--warn) 18%, transparent); }
 .badge.done { color: var(--ok); background: color-mix(in srgb, var(--ok) 16%, transparent); }
+.badge.degenerate { color: var(--warn); background: color-mix(in srgb, var(--warn) 18%, transparent); }
 .badge.failed, .badge.stopped { color: var(--err); background: color-mix(in srgb, var(--err) 16%, transparent); }
+
+/* live per-agent output panels on the run page */
+.panel-sub { font-family: var(--font-display); font-weight: 700; font-size: 1rem; margin: 0 0 0.8rem; }
+.agents { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1rem; }
+.agent { border: 1px solid var(--border); border-radius: var(--r-ctl); overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.agent-head { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.7rem; background: var(--surface-quiet); border-bottom: 1px solid var(--border); }
+.agent-name { font-family: var(--font-mono); font-weight: 700; font-size: 0.8rem; }
+.agent-link { margin-left: auto; font-family: var(--font-ui); font-size: 0.75rem; text-decoration: none; color: var(--accent-text); }
+.agent-log { margin: 0; border-radius: 0; min-height: 8rem; max-height: 40vh; font-size: 0.78rem; }
 
 .console {
   background: var(--brand-bg);

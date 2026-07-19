@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,11 +29,30 @@ type Options struct {
 	// Log, when set, receives human-readable progress lines as jobs start and
 	// finish. It may be called concurrently from several goroutines.
 	Log func(string)
+	// Agent, when set, receives per-agent updates: output lines rendered live
+	// from each run's transcript, and lifecycle status changes. It may be called
+	// concurrently from several goroutines.
+	Agent func(AgentEvent)
+}
+
+// AgentEvent is a live update about one agent — a single config's run. Line
+// carries a rendered transcript line; Status carries a lifecycle change
+// ("running", "done", "failed", "degenerate"). Either may be empty.
+type AgentEvent struct {
+	Agent  string `json:"agent"`
+	Line   string `json:"line,omitempty"`
+	Status string `json:"status,omitempty"`
 }
 
 func (o Options) log(format string, args ...any) {
 	if o.Log != nil {
 		o.Log(fmt.Sprintf(format, args...))
+	}
+}
+
+func (o Options) agent(ev AgentEvent) {
+	if o.Agent != nil {
+		o.Agent(ev)
 	}
 }
 
@@ -114,6 +134,7 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 	_ = os.MkdirAll(artifactDir, 0o755)
 	writeJSON(filepath.Join(artifactDir, "meta.json"), runMeta{Config: j.config.Name, Run: j.run, Model: j.config.Model})
 	opts.log("▶ %-18s démarrage (%s)", rel, j.config.Model)
+	opts.agent(AgentEvent{Agent: rel, Status: "running"})
 
 	// A degenerate attempt — one that made no tool call or produced no diff,
 	// e.g. the model emitting a subagent call as plain text and ending — is a
@@ -129,6 +150,7 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 		}
 		if attempt < attempts {
 			opts.log("↻ %-18s run sans effet (0 outil / diff vide), relance %d/%d", rel, attempt, attempts-1)
+			opts.agent(AgentEvent{Agent: rel, Line: fmt.Sprintf("↻ run sans effet, relance %d/%d", attempt, attempts-1)})
 		}
 	}
 
@@ -140,12 +162,15 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 	switch {
 	case res.Err != "":
 		opts.log("✗ %-18s erreur: %s", rel, firstLine(res.Err))
+		opts.agent(AgentEvent{Agent: rel, Line: "✗ " + firstLine(res.Err), Status: "failed"})
 	case res.Degenerate():
 		opts.log("⚠ %-18s sans effet après %d tentative(s) (écarté des classements)", rel, attempts)
+		opts.agent(AgentEvent{Agent: rel, Status: "degenerate"})
 	default:
 		opts.log("✓ %-18s %s · $%.4f · %d fichier(s) (+%d/-%d)", rel,
 			seconds(res.Metrics.DurationMS), res.Metrics.TotalCostUSD,
 			res.Diff.FilesChanged, res.Diff.Insertions, res.Diff.Deletions)
+		opts.agent(AgentEvent{Agent: rel, Status: "done"})
 	}
 	return res
 }
@@ -170,7 +195,7 @@ func attemptRun(ctx context.Context, s *spec.Spec, j job, rel, artifactDir, work
 		return res
 	}
 
-	metrics, err := runClaude(ctx, s, j, artifactDir, workspaceDir, opts)
+	metrics, err := runClaude(ctx, s, j, rel, artifactDir, workspaceDir, opts)
 	if err != nil {
 		res.Err = err.Error()
 	}
@@ -252,7 +277,7 @@ func firstLine(s string) string {
 	return s
 }
 
-func runClaude(ctx context.Context, s *spec.Spec, j job, artifactDir, workspaceDir string, opts Options) (claude.Metrics, error) {
+func runClaude(ctx context.Context, s *spec.Spec, j job, rel, artifactDir, workspaceDir string, opts Options) (claude.Metrics, error) {
 	transcript, err := os.Create(filepath.Join(artifactDir, "transcript.jsonl"))
 	if err != nil {
 		return claude.Metrics{}, err
@@ -272,7 +297,13 @@ func runClaude(ctx context.Context, s *spec.Spec, j job, artifactDir, workspaceD
 		Env:       map[string]string{"DISABLE_AUTOUPDATER": "1"},
 		Args:      claudeArgs(j.config),
 	}
-	runErr := opts.Docker.Run(ctx, runSpec, transcript, logFile)
+	// Tee the transcript through a live renderer so the dashboard can show each
+	// agent's output as it streams, while the raw stream-json is still persisted.
+	live := claude.NewLiveWriter(func(line string) {
+		opts.agent(AgentEvent{Agent: rel, Line: line})
+	})
+	runErr := opts.Docker.Run(ctx, runSpec, io.MultiWriter(transcript, live), logFile)
+	live.Flush()
 
 	if _, err := transcript.Seek(0, 0); err != nil {
 		return claude.Metrics{}, err

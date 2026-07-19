@@ -410,6 +410,11 @@ type Report struct {
 	// the dashboard form for review and re-launch. Set by the web dashboard;
 	// empty for CLI reports.
 	ReuseURL string
+	// TranscriptBase, when set, is the output directory (relative to the server
+	// root) under which each run's artifacts live; the HTML report links every
+	// run to its replayed transcript. Set by the web dashboard; empty for CLI
+	// reports (a standalone file has no server to query).
+	TranscriptBase string
 }
 
 // Synthesis returns cross-cutting highlights computed from the run metrics.

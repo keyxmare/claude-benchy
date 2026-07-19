@@ -35,6 +35,15 @@ const (
 // follow its progress live. Its artifacts are written to disk under
 // outputRoot; the in-memory state (logs, status) is lost on server restart but
 // the results remain listable through the history.
+// streamEvent is one entry of a job's ordered progress stream: an orchestration
+// log line (Kind "log") or a per-agent update (Kind "agent").
+type streamEvent struct {
+	Kind   string `json:"-"`
+	Agent  string `json:"agent,omitempty"`
+	Line   string `json:"line,omitempty"`
+	Status string `json:"status,omitempty"`
+}
+
 type job struct {
 	id         string
 	outputRoot string
@@ -42,7 +51,7 @@ type job struct {
 
 	mu      sync.Mutex
 	status  jobStatus
-	logs    []string
+	events  []streamEvent
 	errMsg  string
 	changed chan struct{} // closed (and replaced) on every log/status change
 }
@@ -57,11 +66,20 @@ func newJob(id, outputRoot string, cancel context.CancelFunc) *job {
 	}
 }
 
-// append records a progress line. It matches runner.Options.Log and may be
-// called concurrently from several goroutines.
+// append records an orchestration progress line. It matches runner.Options.Log
+// and may be called concurrently from several goroutines.
 func (j *job) append(line string) {
+	j.record(streamEvent{Kind: "log", Line: line})
+}
+
+// agent records a per-agent update. It matches runner.Options.Agent.
+func (j *job) agent(ev runner.AgentEvent) {
+	j.record(streamEvent{Kind: "agent", Agent: ev.Agent, Line: ev.Line, Status: ev.Status})
+}
+
+func (j *job) record(ev streamEvent) {
 	j.mu.Lock()
-	j.logs = append(j.logs, line)
+	j.events = append(j.events, ev)
 	j.signalLocked()
 	j.mu.Unlock()
 }
@@ -81,16 +99,16 @@ func (j *job) signalLocked() {
 	j.changed = make(chan struct{})
 }
 
-// snapshot returns the log lines from index i onward, the current status and
+// snapshot returns the events from index i onward, the current status and
 // error, and a channel that closes when the job next changes — the primitive
 // the SSE handler waits on.
-func (j *job) snapshot(i int) (lines []string, status jobStatus, errMsg string, changed chan struct{}) {
+func (j *job) snapshot(i int) (events []streamEvent, status jobStatus, errMsg string, changed chan struct{}) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if i < len(j.logs) {
-		lines = append(lines, j.logs[i:]...)
+	if i < len(j.events) {
+		events = append(events, j.events[i:]...)
 	}
-	return lines, j.status, j.errMsg, j.changed
+	return events, j.status, j.errMsg, j.changed
 }
 
 // jobManager owns the live jobs and hands out unique ids and output directories.
@@ -140,6 +158,7 @@ func (m *jobManager) exec(ctx context.Context, j *job, s *spec.Spec, rawYAML, im
 		Image:  image,
 		Docker: runnerDocker,
 		Log:    j.append,
+		Agent:  j.agent,
 	})
 	if err != nil {
 		j.finish(statusFailed, err.Error())

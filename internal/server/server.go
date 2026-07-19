@@ -6,7 +6,9 @@
 package server
 
 import (
+	"bufio"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -20,6 +22,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/keyxmare/claude-benchy/internal/claude"
 	"github.com/keyxmare/claude-benchy/internal/docker"
 	"github.com/keyxmare/claude-benchy/internal/report"
 	"github.com/keyxmare/claude-benchy/internal/runner"
@@ -61,6 +64,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /runs/{id}/events", s.handleEvents)
 	mux.HandleFunc("POST /runs/{id}/stop", s.handleStop)
 	mux.HandleFunc("GET /report", s.handleReport)
+	mux.HandleFunc("GET /transcript", s.handleTranscript)
 	mux.HandleFunc("GET /browse", s.handleBrowse)
 	mux.HandleFunc("GET /file", s.handleFile)
 	mux.Handle("GET /static/", http.FileServerFS(staticFS))
@@ -163,7 +167,13 @@ func (s *Server) handleRunPage(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	logs, status, _, _ := j.snapshot(0)
+	events, status, _, _ := j.snapshot(0)
+	var logs []string
+	for _, e := range events {
+		if e.Kind == "log" {
+			logs = append(logs, e.Line)
+		}
+	}
 	rel, _ := filepath.Rel(s.root, j.outputRoot)
 	data := runPageData{ID: j.id, Status: string(status), Logs: logs, ReportDir: rel}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -190,9 +200,15 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	i := 0
 	for {
-		lines, status, errMsg, changed := j.snapshot(i)
-		for _, line := range lines {
-			writeSSE(w, "log", line)
+		events, status, errMsg, changed := j.snapshot(i)
+		for _, ev := range events {
+			if ev.Kind == "agent" {
+				if payload, err := json.Marshal(ev); err == nil {
+					writeSSE(w, "agent", string(payload))
+				}
+			} else {
+				writeSSE(w, "log", ev.Line)
+			}
 			i++
 		}
 		if status != statusRunning {
@@ -237,15 +253,52 @@ func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) {
 	}
 	rep.HomeURL = "/"
 	rep.ReuseURL = "/new?from=" + url.QueryEscape(r.URL.Query().Get("dir"))
+	if rel, err := filepath.Rel(s.root, dir); err == nil {
+		rep.TranscriptBase = rel
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := report.WriteHTML(w, rep); err != nil {
 		fmt.Fprintf(os.Stderr, "render report: %v\n", err)
 	}
 }
 
-// safeDir resolves a history entry's dir parameter against the root and rejects
-// anything escaping it or not looking like a benchmark output directory.
-func (s *Server) safeDir(rel string) (string, error) {
+// transcriptData is the model for a single agent's replayed transcript page.
+type transcriptData struct {
+	Agent string
+	Lines []string
+}
+
+// handleTranscript replays one agent's transcript.jsonl as the same readable
+// feed shown live during the run, so it stays consultable after completion and
+// across server restarts.
+func (s *Server) handleTranscript(w http.ResponseWriter, r *http.Request) {
+	dir, err := s.withinRoot(r.URL.Query().Get("dir"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	f, err := os.Open(filepath.Join(dir, "transcript.jsonl"))
+	if err != nil {
+		http.Error(w, "transcript introuvable", http.StatusNotFound)
+		return
+	}
+	defer func() { _ = f.Close() }()
+
+	var lines []string
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
+	for scanner.Scan() {
+		lines = append(lines, claude.Render(scanner.Bytes())...)
+	}
+	rel, _ := filepath.Rel(s.root, dir)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "transcript.html", transcriptData{Agent: rel, Lines: lines}); err != nil {
+		fmt.Fprintf(os.Stderr, "render transcript: %v\n", err)
+	}
+}
+
+// withinRoot resolves rel against the root and rejects anything escaping it.
+func (s *Server) withinRoot(rel string) (string, error) {
 	if strings.TrimSpace(rel) == "" {
 		return "", errors.New("paramètre dir manquant")
 	}
@@ -256,6 +309,16 @@ func (s *Server) safeDir(rel string) (string, error) {
 	rc, err := filepath.Rel(s.root, abs)
 	if err != nil || rc == ".." || strings.HasPrefix(rc, ".."+string(filepath.Separator)) {
 		return "", errors.New("chemin hors de la racine")
+	}
+	return abs, nil
+}
+
+// safeDir resolves a history entry's dir parameter and requires it to look like
+// a benchmark output directory.
+func (s *Server) safeDir(rel string) (string, error) {
+	abs, err := s.withinRoot(rel)
+	if err != nil {
+		return "", err
 	}
 	if _, err := os.Stat(filepath.Join(abs, "bench.json")); err != nil {
 		return "", errors.New("dossier de bench introuvable")

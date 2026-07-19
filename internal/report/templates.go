@@ -5,9 +5,17 @@ import (
 	"fmt"
 	"html"
 	htmltmpl "html/template"
+	"net/url"
+	"path"
 	"strings"
 	texttmpl "text/template"
 )
+
+// transcriptHref builds the dashboard URL replaying a run's transcript, from the
+// output directory base and the run's artifact subdirectory.
+func transcriptHref(base, artifact string) string {
+	return "/transcript?dir=" + url.QueryEscape(path.Join(base, artifact))
+}
 
 func status(r RunReport) string {
 	switch {
@@ -262,16 +270,17 @@ func filesJSON(r Report) htmltmpl.JS {
 }
 
 var funcs = map[string]any{
-	"status":      status,
-	"statusClass": statusClass,
-	"cost":        cost,
-	"seconds":     seconds,
-	"checks":      checks,
-	"add":         add,
-	"levelClass":  levelClass,
-	"levelSymbol": levelSymbol,
-	"checkClass":  checkClass,
-	"mdCell":      mdCell,
+	"transcriptHref": transcriptHref,
+	"status":         status,
+	"statusClass":    statusClass,
+	"cost":           cost,
+	"seconds":        seconds,
+	"checks":         checks,
+	"add":            add,
+	"levelClass":     levelClass,
+	"levelSymbol":    levelSymbol,
+	"checkClass":     checkClass,
+	"mdCell":         mdCell,
 }
 
 const markdownSource = `# Rapport claude-benchy
@@ -618,7 +627,7 @@ h2 { scroll-margin-top: 1.2rem; }
 <h2 id="comparaison">Comparaison</h2>
 <table>
 <thead>
-<tr><th>Config</th><th>Modèle</th><th>Statut</th><th>Checks</th><th>Tours</th><th>Outils</th><th>Coût</th><th>Durée</th><th>Fichiers</th><th>+Lignes</th><th>-Lignes</th></tr>
+<tr><th>Config</th><th>Modèle</th><th>Statut</th><th>Checks</th><th>Tours</th><th>Outils</th><th>Coût</th><th>Durée</th><th>Fichiers</th><th>+Lignes</th><th>-Lignes</th>{{if .TranscriptBase}}<th>Détail</th>{{end}}</tr>
 </thead>
 <tbody>
 {{- range .Runs}}
@@ -634,6 +643,7 @@ h2 { scroll-margin-top: 1.2rem; }
 <td class="num">{{.Diff.FilesChanged}}</td>
 <td class="num">{{.Diff.Insertions}}</td>
 <td class="num">{{.Diff.Deletions}}</td>
+{{- if $.TranscriptBase}}<td><a href="{{transcriptHref $.TranscriptBase .ArtifactDir}}">transcript</a></td>{{end}}
 </tr>
 {{- end}}
 </tbody>

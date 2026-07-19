@@ -92,6 +92,13 @@ qu'en éditant un fichier de banc :
 - **Nouveau bench** : un formulaire couvre tous les inputs du fichier de banc
   (prompt, app, model, runs, configs, rubric, checks…) ; « Lancer » démarre le
   run et **diffuse la progression live**, puis affiche le lien du rapport.
+- **Sortie live par agent** : sous la console d'orchestration, un panneau par
+  agent (config × run) affiche en temps réel la sortie de son Claude — texte,
+  appels d'outils (`🔧 Bash`, `✏️ Edit`…) et leurs résultats — rendue à la volée
+  depuis le flux stream-json. Chaque panneau porte un lien « transcript ↗ » qui
+  rejoue ce même feed depuis `transcript.jsonl` (route `/transcript`) : il reste
+  consultable après le run et depuis le rapport (colonne « Détail »), même après
+  un redémarrage du serveur.
 - **Historique** : la liste de tous les bancs générés sous la racine, chacun
   ouvrant son rapport HTML re-rendu à la volée.
 - **Reprendre une config** : depuis un rapport, « Reprendre cette config »

@@ -97,16 +97,28 @@ func TestRunEndToEndWithFake(t *testing.T) {
 	outputRoot := filepath.Join(s.Output, "ts")
 
 	var logs []string
+	var events []AgentEvent
 	rep, err := Run(context.Background(), s, outputRoot, "gen", Options{
 		Image:  "img",
 		Docker: fakeDocker{changeFile: "added.txt"},
 		Log:    func(line string) { logs = append(logs, line) },
+		Agent:  func(ev AgentEvent) { events = append(events, ev) },
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !slices.ContainsFunc(logs, func(l string) bool { return strings.HasPrefix(l, "✓") }) {
 		t.Errorf("expected a completion progress line, got %v", logs)
+	}
+	hasAgent := func(pred func(AgentEvent) bool) bool { return slices.ContainsFunc(events, pred) }
+	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && e.Status == "running" }) {
+		t.Errorf("expected a running status event for agent a, got %+v", events)
+	}
+	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && strings.HasPrefix(e.Line, "✏️ Write") }) {
+		t.Errorf("expected a rendered tool-use line for agent a, got %+v", events)
+	}
+	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && e.Status == "done" }) {
+		t.Errorf("expected a done status event for agent a, got %+v", events)
 	}
 	if len(rep.Runs) != 1 {
 		t.Fatalf("expected 1 run, got %d", len(rep.Runs))
