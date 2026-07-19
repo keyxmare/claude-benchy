@@ -64,4 +64,5 @@ effet).
 `TestEvalByConfigAggregatesRunsAndExcludesDegenerate`,
 `TestEvalByConfigNilWithoutEvaluation`, `TestAnalysisWithNoSuccessfulRun`,
 `TestResultHTMLCollapsesSoftWraps`, `TestGolden`, `TestParseChanges`,
-`TestChangeSym`, `TestFileTreeHTML`.
+`TestChangeSym`, `TestFileTreeHTML`, `TestScoreFromCriteria`,
+`TestEfficiencyRanksBestMidWorst`, `TestEfficiencyNoSuccessfulRun`.

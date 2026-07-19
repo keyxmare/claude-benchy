@@ -22,8 +22,10 @@ sources:
   artefacts sur disque, **sans** nouvel appel API.
 - `BenchInfo(outputRoot)` relit le prompt et l'app depuis `bench.json`.
 - `Options{Image, Docker, Log, Agent}` : `Log` reçoit les lignes de progression,
-  `Agent` les mises à jour par agent (config × run) ; les deux peuvent être
-  appelés en concurrence.
+  `Agent` les mises à jour par agent (config × run) via `AgentEvent`, dont le
+  cycle de vie est typé `Status` (`running`/`done`/`failed`/`degenerate`,
+  vocabulaire partagé avec le dashboard) ; les deux peuvent être appelés en
+  concurrence.
 
 ## Flux principaux
 

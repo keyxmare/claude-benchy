@@ -20,6 +20,10 @@ sources:
   `ConfigScore`, `Analysis`, etc.
 - Définit les prédicats **centraux** `RunReport.Degenerate()` et `RunReport.OK()`,
   ainsi que le calcul de score `ScoreFromCriteria`.
+- Modélise les valeurs porteuses d'invariant en **value objects** : `Level` (le
+  niveau d'un critère, construit par `NormalizeLevel`, qui porte son poids de
+  score, sa classe CSS et son glyphe) et `Rank` (le rang d'efficacité
+  best/mid/worst d'une config sur un axe, rendu via le visuel de `Level`).
 - Le rapport HTML est autoportant (design **Gazoline** de Motoblouz, CSS inline).
 
 ## Flux principaux
@@ -72,4 +76,7 @@ bibliothèque standard. Consommé par `cmd/benchy` et `internal/server`.
 `TestEvalByConfigAggregatesRunsAndExcludesDegenerate`,
 `TestEvalByConfigNilWithoutEvaluation`, `TestAnalysisWithNoSuccessfulRun`,
 `TestResultHTMLCollapsesSoftWraps`, `TestGolden`, `TestApplyButtonOnlyWhenServed`,
-`TestParseChanges`, `TestChangeSym`, `TestFileTreeHTML`.
+`TestParseChanges`, `TestChangeSym`, `TestFileTreeHTML`, `TestNormalizeLevel`,
+`TestScoreFromCriteria`, `TestAggregateLevel`, `TestLevelWeight`,
+`TestLevelCSSClass`, `TestLevelSymbol`, `TestRankCSSClass`, `TestRankSymbol`,
+`TestEfficiencyRanksBestMidWorst`, `TestEfficiencyNoSuccessfulRun`.
