@@ -551,8 +551,8 @@ func recommend(r Report, ok []RunReport) []string {
 			"Face à **%s**, les autres configurations coûtent en moyenne %s et sont %s, pour %s.",
 			base.Label(), signedPct(dc), slowerFaster(dd), changeDelta(dsz)))
 		if dc > 0 && dsz <= 0 {
-			out = append(out, fmt.Sprintf(
-				"Sur ce prompt, les instructions ajoutées pèsent sans élargir le périmètre traité : envisager de les alléger ou de les évaluer sur un prompt où elles font la différence."))
+			out = append(out,
+				"Sur ce prompt, les instructions ajoutées pèsent sans élargir le périmètre traité : envisager de les alléger ou de les évaluer sur un prompt où elles font la différence.")
 		}
 	}
 
@@ -795,7 +795,7 @@ func Write(dir string, r Report) error {
 	if err != nil {
 		return err
 	}
-	defer md.Close()
+	defer func() { _ = md.Close() }()
 	if err := WriteMarkdown(md, r); err != nil {
 		return err
 	}
@@ -804,7 +804,7 @@ func Write(dir string, r Report) error {
 	if err != nil {
 		return err
 	}
-	defer html.Close()
+	defer func() { _ = html.Close() }()
 	return WriteHTML(html, r)
 }
 

@@ -95,7 +95,7 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	if info.Size() > maxViewBytes {
-		fmt.Fprintf(w, "… fichier trop volumineux pour l'aperçu (%d octets)\n", info.Size())
+		_, _ = fmt.Fprintf(w, "… fichier trop volumineux pour l'aperçu (%d octets)\n", info.Size())
 		return
 	}
 	b, err := os.ReadFile(path)
@@ -104,7 +104,7 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !utf8.Valid(b) {
-		io.WriteString(w, "… contenu binaire non affiché\n")
+		_, _ = io.WriteString(w, "… contenu binaire non affiché\n")
 		return
 	}
 	_, _ = w.Write(b)

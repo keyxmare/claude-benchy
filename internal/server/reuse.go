@@ -88,11 +88,11 @@ func formFromDoc(d benchDoc) formValues {
 		fv.EvalModel = d.Evaluate.Model
 		fv.Rubric = strings.Join(d.Evaluate.Rubric, "\n")
 		for _, c := range d.Evaluate.Checks {
-			fv.Checks = append(fv.Checks, checkRow{Name: c.Name, Run: c.Run, File: c.File})
+			fv.Checks = append(fv.Checks, checkRow(c))
 		}
 	}
 	for _, c := range d.Configs {
-		fv.Configs = append(fv.Configs, configRow{Name: c.Name, Bundle: c.Bundle, Model: c.Model, Prompt: c.Prompt})
+		fv.Configs = append(fv.Configs, configRow(c))
 	}
 	return withDefaults(fv)
 }

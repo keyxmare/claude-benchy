@@ -266,9 +266,9 @@ func (s *Server) safeDir(rel string) (string, error) {
 // writeSSE emits one Server-Sent Event, splitting multi-line data across the
 // `data:` fields the protocol requires.
 func writeSSE(w io.Writer, event, data string) {
-	fmt.Fprintf(w, "event: %s\n", event)
+	_, _ = fmt.Fprintf(w, "event: %s\n", event)
 	for _, line := range strings.Split(data, "\n") {
-		fmt.Fprintf(w, "data: %s\n", line)
+		_, _ = fmt.Fprintf(w, "data: %s\n", line)
 	}
-	fmt.Fprint(w, "\n")
+	_, _ = fmt.Fprint(w, "\n")
 }

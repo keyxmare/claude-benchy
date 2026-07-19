@@ -257,13 +257,13 @@ func runClaude(ctx context.Context, s *spec.Spec, j job, artifactDir, workspaceD
 	if err != nil {
 		return claude.Metrics{}, err
 	}
-	defer transcript.Close()
+	defer func() { _ = transcript.Close() }()
 
 	logFile, err := os.Create(filepath.Join(artifactDir, "stdout.log"))
 	if err != nil {
 		return claude.Metrics{}, err
 	}
-	defer logFile.Close()
+	defer func() { _ = logFile.Close() }()
 
 	runSpec := docker.RunSpec{
 		Image:     opts.Image,

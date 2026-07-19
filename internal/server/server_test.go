@@ -29,7 +29,7 @@ func (fakeDocker) Run(_ context.Context, spec docker.RunSpec, stdout, _ io.Write
 		return nil
 	}
 	_ = os.WriteFile(filepath.Join(spec.WorkDir, "added.txt"), []byte("edited\n"), 0o644)
-	fmt.Fprintln(stdout, `{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0.01,"result":"ok"}`)
+	_, _ = fmt.Fprintln(stdout, `{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0.01,"result":"ok"}`)
 	return nil
 }
 

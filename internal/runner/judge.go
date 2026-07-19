@@ -134,7 +134,7 @@ func runJudge(ctx context.Context, s *spec.Spec, prompt, outputRoot string, opts
 	if err := os.MkdirAll(scratch, 0o755); err != nil {
 		return "", err
 	}
-	defer os.RemoveAll(scratch)
+	defer func() { _ = os.RemoveAll(scratch) }()
 
 	var transcript bytes.Buffer
 	runSpec := docker.RunSpec{

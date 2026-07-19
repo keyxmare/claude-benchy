@@ -42,15 +42,15 @@ func (f fakeDocker) Run(_ context.Context, spec docker.RunSpec, stdout, _ io.Wri
 		evt, _ := json.Marshal(map[string]any{
 			"type": "result", "subtype": "success", "is_error": false, "result": answer,
 		})
-		stdout.Write(append(evt, '\n'))
+		_, _ = stdout.Write(append(evt, '\n'))
 		return nil
 	}
 
 	if f.changeFile != "" {
 		_ = os.WriteFile(filepath.Join(spec.WorkDir, f.changeFile), []byte("edited by claude\n"), 0o644)
 	}
-	fmt.Fprintln(stdout, `{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write"}]}}`)
-	fmt.Fprintln(stdout, `{"type":"result","subtype":"success","is_error":false,"num_turns":2,"total_cost_usd":0.05,"result":"ok"}`)
+	_, _ = fmt.Fprintln(stdout, `{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write"}]}}`)
+	_, _ = fmt.Fprintln(stdout, `{"type":"result","subtype":"success","is_error":false,"num_turns":2,"total_cost_usd":0.05,"result":"ok"}`)
 	return nil
 }
 
@@ -266,12 +266,12 @@ func (f *flakyDocker) Run(_ context.Context, spec docker.RunSpec, stdout, _ io.W
 	f.claudeCalls++
 	if f.claudeCalls <= f.degenerateAttempts {
 		// No tool_use event and no file written: a degenerate, no-op run.
-		fmt.Fprintln(stdout, `{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0.01,"result":"Agent({...}) written as text"}`)
+		_, _ = fmt.Fprintln(stdout, `{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0.01,"result":"Agent({...}) written as text"}`)
 		return nil
 	}
 	_ = os.WriteFile(filepath.Join(spec.WorkDir, f.changeFile), []byte("edited by claude\n"), 0o644)
-	fmt.Fprintln(stdout, `{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write"}]}}`)
-	fmt.Fprintln(stdout, `{"type":"result","subtype":"success","is_error":false,"num_turns":2,"total_cost_usd":0.05,"result":"ok"}`)
+	_, _ = fmt.Fprintln(stdout, `{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write"}]}}`)
+	_, _ = fmt.Fprintln(stdout, `{"type":"result","subtype":"success","is_error":false,"num_turns":2,"total_cost_usd":0.05,"result":"ok"}`)
 	return nil
 }
 
