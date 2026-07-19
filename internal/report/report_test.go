@@ -1,4 +1,4 @@
-package report
+package report_test
 
 import (
 	"bytes"
@@ -10,14 +10,15 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/keyxmare/claude-benchy/internal/claude"
 	"github.com/keyxmare/claude-benchy/internal/diffcap"
+	"github.com/keyxmare/claude-benchy/internal/report"
 )
 
-func sample() Report {
-	return Report{
+func sample() report.Report {
+	return report.Report{
 		Prompt:      "Add a /health endpoint.",
 		App:         "/tmp/app",
 		GeneratedAt: "2026-07-15 10:00:00 UTC",
-		Runs: []RunReport{
+		Runs: []report.RunReport{
 			{
 				Config: "vanilla", Run: 1, Model: "sonnet",
 				ArtifactDir: "vanilla",
@@ -29,10 +30,10 @@ func sample() Report {
 				},
 				Diff:  diffcap.Stats{FilesChanged: 1, Insertions: 3, Deletions: 0},
 				Patch: "diff --git a/server.js b/server.js\n@@ -1,2 +1,5 @@\n context\n+added line\n-removed line",
-				Files: []FileVersion{
+				Files: []report.FileVersion{
 					{Path: "server.js", Content: "const app = express();\napp.get('/health', (_, res) => res.json({ ok: true }));\nmodule.exports = app;\n"},
 				},
-				Checks: []Check{
+				Checks: []report.Check{
 					{Name: "tests", Passed: true},
 					{Name: "endpoint présent", Passed: true, Detail: "fichier présent"},
 				},
@@ -48,10 +49,10 @@ func sample() Report {
 				},
 				Diff:  diffcap.Stats{FilesChanged: 1, Insertions: 5, Deletions: 0},
 				Patch: "diff --git a/server.js b/server.js\n@@ -1,2 +1,6 @@\n context\n+more lines",
-				Files: []FileVersion{
+				Files: []report.FileVersion{
 					{Path: "server.js", Content: "const app = express();\napp.get('/health', (req, res) => {\n  res.status(200).json({ ok: true });\n});\nmodule.exports = app;\n"},
 				},
-				Checks: []Check{
+				Checks: []report.Check{
 					{Name: "tests", Passed: false, Detail: "…FAIL server.test.js"},
 					{Name: "endpoint présent", Passed: true, Detail: "fichier présent"},
 				},
@@ -62,17 +63,17 @@ func sample() Report {
 				Err:         "docker run: exit status 1",
 			},
 		},
-		Evaluation: &Evaluation{
+		Evaluation: &report.Evaluation{
 			Model:  "sonnet",
 			Rubric: []string{"Expose `GET /health` renvoyant 200", "Reste minimal, sans dépendance inutile"},
-			Configs: []ConfigEval{
+			Configs: []report.ConfigEval{
 				{Label: "vanilla", Score: 100, Verdict: "Répond à l'attendu de façon minimale.",
-					Criteria: []CriterionEval{
+					Criteria: []report.CriterionEval{
 						{Criterion: "Expose `GET /health` renvoyant 200", Level: "respecté", Note: "route et statut corrects"},
 						{Criterion: "Reste minimal, sans dépendance inutile", Level: "respecté", Note: "aucune dépendance ajoutée"},
 					}},
 				{Label: "strict", Score: 50, Verdict: "Correct mais plus verbeux que nécessaire.",
-					Criteria: []CriterionEval{
+					Criteria: []report.CriterionEval{
 						{Criterion: "Expose `GET /health` renvoyant 200", Level: "respecté", Note: "statut HTTP explicite"},
 						{Criterion: "Reste minimal, sans dépendance inutile", Level: "non", Note: "code superflu, tests en échec"},
 					}},
@@ -86,30 +87,30 @@ func sample() Report {
 // sampleRepeated exercises the per-config aggregation on the real-world shape:
 // several runs per config, one degenerate run (excluded), and diverging scores
 // so the report shows a spread and a partially-passing check.
-func sampleRepeated() Report {
+func sampleRepeated() report.Report {
 	c1 := "Couvre la logique testable"
 	c2 := "Tests idiomatiques (table-driven)"
-	okRun := func(cfg string, run, tools, files int, testPass bool) RunReport {
-		return RunReport{
+	okRun := func(cfg string, run, tools, files int, testPass bool) report.RunReport {
+		return report.RunReport{
 			Config: cfg, Run: run, Model: "sonnet",
 			ArtifactDir: cfg + "/run-" + string(rune('0'+run)),
 			Metrics:     claude.Metrics{NumTurns: tools + 1, ToolUses: tools, TotalCostUSD: 0.5, DurationMS: 120000, Result: "Tests ajoutés."},
 			Diff:        diffcap.Stats{FilesChanged: files, Insertions: 100, Deletions: 0},
 			Patch:       "diff --git a/x_test.go b/x_test.go\n@@ -0,0 +1 @@\n+// test",
-			Checks: []Check{
+			Checks: []report.Check{
 				{Name: "go test", Passed: testPass, Detail: map[bool]string{true: "", false: "…FAIL"}[testPass]},
 				{Name: "go vet", Passed: true},
 			},
 		}
 	}
-	crit := func(l1, l2 string) []CriterionEval {
-		return []CriterionEval{{Criterion: c1, Level: l1, Note: "cf. diff"}, {Criterion: c2, Level: l2, Note: "cf. diff"}}
+	crit := func(l1, l2 string) []report.CriterionEval {
+		return []report.CriterionEval{{Criterion: c1, Level: l1, Note: "cf. diff"}, {Criterion: c2, Level: l2, Note: "cf. diff"}}
 	}
-	return Report{
+	return report.Report{
 		Prompt:      "Écris les tests unitaires manquants.",
 		App:         "/tmp/app",
 		GeneratedAt: "2026-07-16 22:40:00 CEST",
-		Runs: []RunReport{
+		Runs: []report.RunReport{
 			// Degenerate: the model emitted a subagent call as plain text and ended.
 			{Config: "vanilla", Run: 1, Model: "sonnet", ArtifactDir: "vanilla/run-1",
 				Metrics: claude.Metrics{NumTurns: 1, ToolUses: 0, TotalCostUSD: 0.07, DurationMS: 8500,
@@ -120,10 +121,10 @@ func sampleRepeated() Report {
 			okRun("skill", 2, 19, 2, true),
 			okRun("skill", 3, 21, 2, true),
 		},
-		Evaluation: &Evaluation{
+		Evaluation: &report.Evaluation{
 			Model:  "sonnet",
 			Rubric: []string{c1, c2},
-			Configs: []ConfigEval{
+			Configs: []report.ConfigEval{
 				{Label: "vanilla · run 2", Score: 100, Verdict: "Couverture pure et table-driven.", Criteria: crit("respecté", "respecté")},
 				{Label: "vanilla · run 3", Score: 67, Verdict: "Bonne couverture, style peu table-driven.", Criteria: crit("respecté", "partiel")},
 				{Label: "skill", Score: 83, Verdict: "Couverture pure, style perfectible.", Criteria: crit("respecté", "partiel")},
@@ -135,13 +136,13 @@ func sampleRepeated() Report {
 	}
 }
 
-func verdict(a Analysis, label string) Verdict {
+func verdict(a report.Analysis, label string) report.Verdict {
 	for _, v := range a.Verdicts {
 		if v.Label == label {
 			return v
 		}
 	}
-	return Verdict{}
+	return report.Verdict{}
 }
 
 func hasSubstr(items []string, sub string) bool {
@@ -197,14 +198,14 @@ func TestAnalysisRanksAndRecommends(t *testing.T) {
 
 func TestDegenerateAndOK(t *testing.T) {
 	cases := map[string]struct {
-		run            RunReport
+		run            report.RunReport
 		wantOK, wantDe bool
 	}{
-		"real work":    {RunReport{Metrics: claude.Metrics{ToolUses: 3}, Diff: diffcap.Stats{FilesChanged: 1}}, true, false},
-		"no tool call": {RunReport{Metrics: claude.Metrics{ToolUses: 0}, Diff: diffcap.Stats{FilesChanged: 1}}, false, true},
-		"empty diff":   {RunReport{Metrics: claude.Metrics{ToolUses: 5}, Diff: diffcap.Stats{FilesChanged: 0}}, false, true},
-		"hard error":   {RunReport{Err: "docker run: boom"}, false, false},
-		"claude error": {RunReport{Metrics: claude.Metrics{IsError: true}}, false, false},
+		"real work":    {report.RunReport{Metrics: claude.Metrics{ToolUses: 3}, Diff: diffcap.Stats{FilesChanged: 1}}, true, false},
+		"no tool call": {report.RunReport{Metrics: claude.Metrics{ToolUses: 0}, Diff: diffcap.Stats{FilesChanged: 1}}, false, true},
+		"empty diff":   {report.RunReport{Metrics: claude.Metrics{ToolUses: 5}, Diff: diffcap.Stats{FilesChanged: 0}}, false, true},
+		"hard error":   {report.RunReport{Err: "docker run: boom"}, false, false},
+		"claude error": {report.RunReport{Metrics: claude.Metrics{IsError: true}}, false, false},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -220,27 +221,27 @@ func TestDegenerateAndOK(t *testing.T) {
 
 func TestEvalByConfigAggregatesRunsAndExcludesDegenerate(t *testing.T) {
 	crit := []string{"c1", "c2"}
-	okRun := func(cfg string, run, tools, files int) RunReport {
-		return RunReport{Config: cfg, Run: run, Model: "sonnet",
+	okRun := func(cfg string, run, tools, files int) report.RunReport {
+		return report.RunReport{Config: cfg, Run: run, Model: "sonnet",
 			Metrics: claude.Metrics{ToolUses: tools}, Diff: diffcap.Stats{FilesChanged: files},
-			Checks: []Check{{Name: "go test", Passed: true}}}
+			Checks: []report.Check{{Name: "go test", Passed: true}}}
 	}
-	r := Report{
-		Runs: []RunReport{
+	r := report.Report{
+		Runs: []report.RunReport{
 			// run 1 is degenerate (no tool call, no diff): must be excluded.
 			{Config: "vanilla", Run: 1, Model: "sonnet"},
 			okRun("vanilla", 2, 5, 2),
 			okRun("vanilla", 3, 4, 1),
 			okRun("strict", 1, 6, 1),
 		},
-		Evaluation: &Evaluation{
+		Evaluation: &report.Evaluation{
 			Rubric: crit,
-			Configs: []ConfigEval{
-				{Label: "vanilla · run 2", Score: 100, Verdict: "run 2 verdict", Criteria: []CriterionEval{
+			Configs: []report.ConfigEval{
+				{Label: "vanilla · run 2", Score: 100, Verdict: "run 2 verdict", Criteria: []report.CriterionEval{
 					{Criterion: "c1", Level: "respecté", Note: "n1"}, {Criterion: "c2", Level: "respecté", Note: "n2"}}},
-				{Label: "vanilla · run 3", Score: 50, Verdict: "run 3 verdict", Criteria: []CriterionEval{
+				{Label: "vanilla · run 3", Score: 50, Verdict: "run 3 verdict", Criteria: []report.CriterionEval{
 					{Criterion: "c1", Level: "respecté", Note: "n1b"}, {Criterion: "c2", Level: "non", Note: "n2b"}}},
-				{Label: "strict", Score: 40, Verdict: "strict verdict", Criteria: []CriterionEval{
+				{Label: "strict", Score: 40, Verdict: "strict verdict", Criteria: []report.CriterionEval{
 					{Criterion: "c1", Level: "partiel", Note: "s1"}, {Criterion: "c2", Level: "non", Note: "s2"}}},
 			},
 		},
@@ -283,24 +284,16 @@ func TestEvalByConfigAggregatesRunsAndExcludesDegenerate(t *testing.T) {
 }
 
 func TestEvalByConfigNilWithoutEvaluation(t *testing.T) {
-	if got := (Report{Runs: []RunReport{{Config: "a"}}}).EvalByConfig(); got != nil {
+	if got := (report.Report{Runs: []report.RunReport{{Config: "a"}}}).EvalByConfig(); got != nil {
 		t.Errorf("expected nil without an evaluation, got %+v", got)
 	}
 }
 
 func TestAnalysisWithNoSuccessfulRun(t *testing.T) {
-	r := Report{Runs: []RunReport{{Config: "x", Err: "boom"}}}
+	r := report.Report{Runs: []report.RunReport{{Config: "x", Err: "boom"}}}
 	a := r.Analysis()
 	if !hasSubstr(a.Recommendations, "Aucun run réussi") {
 		t.Errorf("expected a no-success recommendation, got %v", a.Recommendations)
-	}
-}
-
-func TestResultHTMLCollapsesSoftWraps(t *testing.T) {
-	got := string(resultHTML("Ligne un\nligne deux.\n\n**Gras** et `code`."))
-	want := "<p>Ligne un ligne deux.</p><p><strong>Gras</strong> et <code>code</code>.</p>"
-	if got != want {
-		t.Errorf("resultHTML() =\n%s\nwant\n%s", got, want)
 	}
 }
 
@@ -309,10 +302,10 @@ func TestGolden(t *testing.T) {
 		name  string
 		write func(w *bytes.Buffer) error
 	}{
-		{"report.md", func(w *bytes.Buffer) error { return WriteMarkdown(w, sample()) }},
-		{"report.html", func(w *bytes.Buffer) error { return WriteHTML(w, sample()) }},
-		{"report-repeated.md", func(w *bytes.Buffer) error { return WriteMarkdown(w, sampleRepeated()) }},
-		{"report-repeated.html", func(w *bytes.Buffer) error { return WriteHTML(w, sampleRepeated()) }},
+		{"report.md", func(w *bytes.Buffer) error { return report.WriteMarkdown(w, sample()) }},
+		{"report.html", func(w *bytes.Buffer) error { return report.WriteHTML(w, sample()) }},
+		{"report-repeated.md", func(w *bytes.Buffer) error { return report.WriteMarkdown(w, sampleRepeated()) }},
+		{"report-repeated.html", func(w *bytes.Buffer) error { return report.WriteHTML(w, sampleRepeated()) }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -342,7 +335,7 @@ func TestApplyButtonOnlyWhenServed(t *testing.T) {
 	served.TranscriptBase = "benches/x/results/ts"
 	served.Runs[0].Bundle = "/some/bundle"
 	var withServer bytes.Buffer
-	if err := WriteHTML(&withServer, served); err != nil {
+	if err := report.WriteHTML(&withServer, served); err != nil {
 		t.Fatal(err)
 	}
 	body := withServer.String()
@@ -357,7 +350,7 @@ func TestApplyButtonOnlyWhenServed(t *testing.T) {
 	}
 
 	var standalone bytes.Buffer
-	if err := WriteHTML(&standalone, sample()); err != nil {
+	if err := report.WriteHTML(&standalone, sample()); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(standalone.String(), `action="/apply"`) {
@@ -368,67 +361,38 @@ func TestApplyButtonOnlyWhenServed(t *testing.T) {
 	}
 }
 
-func TestParseChanges(t *testing.T) {
-	added := "diff --git a/docs/x.md b/docs/x.md\nnew file mode 100644\n--- /dev/null\n+++ b/docs/x.md\n@@ -0,0 +1 @@\n+hi\n"
-	removed := "diff --git a/old.go b/old.go\ndeleted file mode 100644\n--- a/old.go\n+++ /dev/null\n"
-	modified := "diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n-a\n+b\n"
-
-	malformed := "diff --git bogus-line-without-b-path\n"
-	got := parseChanges(added + removed + modified + malformed)
-
-	want := []fileChange{
-		{Path: "README.md", Status: "modified"},
-		{Path: "docs/x.md", Status: "added"},
-		{Path: "old.go", Status: "removed"},
-	}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("parseChanges() mismatch (-want +got):\n%s", diff)
-	}
-	if n := parseChanges(""); n != nil {
-		t.Errorf("parseChanges(empty) = %+v, want nil", n)
-	}
-}
-
-func TestChangeSym(t *testing.T) {
-	for status, want := range map[string]string{"added": "+", "removed": "-", "modified": "~", "": "~"} {
-		if got := changeSym(status); got != want {
-			t.Errorf("changeSym(%q) = %q, want %q", status, got, want)
-		}
-	}
-}
-
 func TestNormalizeLevel(t *testing.T) {
-	for in, want := range map[string]Level{
-		"respecté":           Met,
-		"respectée à moitié": Met,
-		"OUI":                Met,
-		"ok":                 Met,
-		"met the bar":        Met,
-		"full":               Met,
-		"partiellement":      Partial,
-		"partial credit":     Partial,
-		"non":                Unmet,
-		"n'importe quoi":     Unmet,
-		"":                   Unrated,
-		"   ":                Unrated,
+	for in, want := range map[string]report.Level{
+		"respecté":           report.Met,
+		"respectée à moitié": report.Met,
+		"OUI":                report.Met,
+		"ok":                 report.Met,
+		"met the bar":        report.Met,
+		"full":               report.Met,
+		"partiellement":      report.Partial,
+		"partial credit":     report.Partial,
+		"non":                report.Unmet,
+		"n'importe quoi":     report.Unmet,
+		"":                   report.Unrated,
+		"   ":                report.Unrated,
 	} {
-		if got := NormalizeLevel(in); got != want {
-			t.Errorf("NormalizeLevel(%q) = %q, want %q", in, got, want)
+		if got := report.NormalizeLevel(in); got != want {
+			t.Errorf("report.NormalizeLevel(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
 
 func TestScoreFromCriteria(t *testing.T) {
-	crit := func(levels ...string) []CriterionEval {
-		cs := make([]CriterionEval, len(levels))
+	crit := func(levels ...string) []report.CriterionEval {
+		cs := make([]report.CriterionEval, len(levels))
 		for i, l := range levels {
-			cs[i] = CriterionEval{Level: l}
+			cs[i] = report.CriterionEval{Level: l}
 		}
 		return cs
 	}
 	tests := []struct {
 		name string
-		in   []CriterionEval
+		in   []report.CriterionEval
 		want int
 	}{
 		{"empty", nil, 0},
@@ -439,77 +403,55 @@ func TestScoreFromCriteria(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := ScoreFromCriteria(tt.in); got != tt.want {
-				t.Errorf("ScoreFromCriteria(%v) = %d, want %d", tt.in, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestAggregateLevel(t *testing.T) {
-	tests := []struct {
-		name string
-		in   []string
-		want string
-	}{
-		{"empty", nil, ""},
-		{"unanimous met", []string{"respecté", "respecté"}, "respecté"},
-		{"met boundary 0.75", []string{"respecté", "respecté", "respecté", "non"}, "respecté"},
-		{"mixed to partial", []string{"respecté", "non"}, "partiel"},
-		{"unanimous unmet", []string{"non", "non"}, "non"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			if got := aggregateLevel(tt.in); got != tt.want {
-				t.Errorf("aggregateLevel(%v) = %q, want %q", tt.in, got, tt.want)
+			if got := report.ScoreFromCriteria(tt.in); got != tt.want {
+				t.Errorf("report.ScoreFromCriteria(%v) = %d, want %d", tt.in, got, tt.want)
 			}
 		})
 	}
 }
 
 func TestLevelWeight(t *testing.T) {
-	for level, want := range map[Level]float64{Met: 1, Partial: 0.5, Unmet: 0, Unrated: 0} {
+	for level, want := range map[report.Level]float64{report.Met: 1, report.Partial: 0.5, report.Unmet: 0, report.Unrated: 0} {
 		if got := level.Weight(); got != want {
-			t.Errorf("Level(%q).Weight() = %v, want %v", level, got, want)
+			t.Errorf("report.Level(%q).Weight() = %v, want %v", level, got, want)
 		}
 	}
 }
 
 func TestLevelCSSClass(t *testing.T) {
-	for level, want := range map[Level]string{Met: "ok", Partial: "warn", Unmet: "ko", Unrated: "na"} {
+	for level, want := range map[report.Level]string{report.Met: "ok", report.Partial: "warn", report.Unmet: "ko", report.Unrated: "na"} {
 		if got := level.CSSClass(); got != want {
-			t.Errorf("Level(%q).CSSClass() = %q, want %q", level, got, want)
+			t.Errorf("report.Level(%q).CSSClass() = %q, want %q", level, got, want)
 		}
 	}
 }
 
 func TestLevelSymbol(t *testing.T) {
-	for level, want := range map[Level]string{Met: "✓", Partial: "~", Unmet: "✗", Unrated: "–"} {
+	for level, want := range map[report.Level]string{report.Met: "✓", report.Partial: "~", report.Unmet: "✗", report.Unrated: "–"} {
 		if got := level.Symbol(); got != want {
-			t.Errorf("Level(%q).Symbol() = %q, want %q", level, got, want)
+			t.Errorf("report.Level(%q).Symbol() = %q, want %q", level, got, want)
 		}
 	}
 }
 
 func TestEfficiencyRanksBestMidWorst(t *testing.T) {
-	run := func(cost float64) RunReport {
-		return RunReport{
+	run := func(cost float64) report.RunReport {
+		return report.RunReport{
 			Metrics: claude.Metrics{ToolUses: 1, NumTurns: 1, DurationMS: 1000, TotalCostUSD: cost},
 			Diff:    diffcap.Stats{FilesChanged: 1},
 		}
 	}
-	r := Report{Runs: []RunReport{run(0.01), run(0.02), run(0.03)}}
+	r := report.Report{Runs: []report.RunReport{run(0.01), run(0.02), run(0.03)}}
 
-	var cost EffRow
+	var cost report.EffRow
 	for _, row := range r.Efficiency() {
 		if row.Axis == "Coût" {
 			cost = row
 		}
 	}
 
-	want := []Rank{Best, Mid, Worst}
-	var got []Rank
+	want := []report.Rank{report.Best, report.Mid, report.Worst}
+	var got []report.Rank
 	for _, c := range cost.Cells {
 		got = append(got, c.Rank)
 	}
@@ -519,46 +461,23 @@ func TestEfficiencyRanksBestMidWorst(t *testing.T) {
 }
 
 func TestEfficiencyNoSuccessfulRun(t *testing.T) {
-	if got := (Report{Runs: []RunReport{{Err: "boom"}}}).Efficiency(); got != nil {
+	if got := (report.Report{Runs: []report.RunReport{{Err: "boom"}}}).Efficiency(); got != nil {
 		t.Errorf("Efficiency() with no OK run = %v, want nil", got)
 	}
 }
 
 func TestRankCSSClass(t *testing.T) {
-	for rank, want := range map[Rank]string{Best: "ok", Mid: "warn", Worst: "ko", None: "na"} {
+	for rank, want := range map[report.Rank]string{report.Best: "ok", report.Mid: "warn", report.Worst: "ko", report.None: "na"} {
 		if got := rank.CSSClass(); got != want {
-			t.Errorf("Rank(%q).CSSClass() = %q, want %q", rank, got, want)
+			t.Errorf("report.Rank(%q).CSSClass() = %q, want %q", rank, got, want)
 		}
 	}
 }
 
 func TestRankSymbol(t *testing.T) {
-	for rank, want := range map[Rank]string{Best: "✓", Mid: "~", Worst: "✗", None: "–"} {
+	for rank, want := range map[report.Rank]string{report.Best: "✓", report.Mid: "~", report.Worst: "✗", report.None: "–"} {
 		if got := rank.Symbol(); got != want {
-			t.Errorf("Rank(%q).Symbol() = %q, want %q", rank, got, want)
+			t.Errorf("report.Rank(%q).Symbol() = %q, want %q", rank, got, want)
 		}
-	}
-}
-
-func TestFileTreeHTML(t *testing.T) {
-	patch := "diff --git a/docs/a/b.md b/docs/a/b.md\nnew file mode 100644\n" +
-		"diff --git a/old.go b/old.go\ndeleted file mode 100644\n" +
-		"diff --git a/README.md b/README.md\n@@ -1 +1 @@\n"
-
-	got := string(fileTreeHTML(RunReport{Patch: patch}))
-
-	for _, want := range []string{
-		`<li class="dir">docs/`,
-		`<li class="dir">a/`,
-		`<li class="file added">b.md</li>`,
-		`<li class="file removed">old.go</li>`,
-		`<li class="file modified">README.md</li>`,
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("fileTreeHTML() missing %q in:\n%s", want, got)
-		}
-	}
-	if empty := string(fileTreeHTML(RunReport{})); !strings.Contains(empty, "Aucune modification") {
-		t.Errorf("fileTreeHTML(empty) = %q", empty)
 	}
 }
