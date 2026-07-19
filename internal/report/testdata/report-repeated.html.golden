@@ -151,23 +151,18 @@ table.matrix tfoot td .spread { color: var(--ink-quiet); font-weight: 400; font-
 .card > header .stat { color: var(--ink-quiet); font-family: var(--font-ui); font-size: 0.85rem;
   font-variant-numeric: tabular-nums; }
 .card .body { padding: 0.2rem 1rem 1rem; }
-.card .body.split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.4rem; align-items: start; }
-.card-info, .card-diff { min-width: 0; }
+.card-info { min-width: 0; }
 .card-info > :first-child { margin-top: 0; }
-.card-diff pre.diff { margin: 0; }
-@media (min-width: 940px) {
-  .card .body.split { grid-template-columns: minmax(260px, 360px) minmax(0, 1fr); }
-}
 .result p { margin: 0.6rem 0; }
 .result p:first-child { margin-top: 0.4rem; }
 .result ul { margin: 0.6rem 0; padding-left: 1.2rem; }
-pre.diff { background: var(--surface-quiet); border: 1px solid var(--border); border-radius: var(--r-ctl);
-  padding: 0.8rem 1rem; overflow-x: auto; font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.35; }
-pre.diff span { display: block; white-space: pre; }
-pre.diff .add { background: var(--add-bg); color: var(--add-fg); }
-pre.diff .del { background: var(--del-bg); color: var(--del-fg); }
-pre.diff .hunk { color: var(--hunk); }
-pre.diff .meta { color: var(--ink-quiet); }
+h4.detail-sub { font-family: var(--font-display); font-size: 0.9rem; margin: 1rem 0 0.4rem; }
+ul.checklist { list-style: none; margin: 0.3rem 0 0; padding: 0; }
+ul.checklist li { padding: 0.15rem 0; }
+ul.checklist li.ok::before { content: "\2713"; color: var(--ok); font-weight: 800; margin-right: 0.6rem; }
+ul.checklist li.ko::before { content: "\2717"; color: var(--err); font-weight: 800; margin-right: 0.6rem; }
+ul.checklist li .stat { color: var(--ink-quiet); font-family: var(--font-mono); font-size: 0.8rem; }
+form.apply { margin: 1rem 0 0; }
 .sxs-controls { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: 1rem 0; align-items: center; }
 .sxs-controls label { color: var(--ink-quiet); font-family: var(--font-display); font-size: 0.78rem;
   text-transform: uppercase; letter-spacing: 0.03em; display: flex; gap: 0.5rem; align-items: center; }
@@ -448,6 +443,7 @@ h2 { scroll-margin-top: 1.2rem; }
 <div id="sxs-body"></div>
 
 <h2 id="detail">Détail par config</h2>
+<p class="meta-list">Résultat, vérifications déterministes et application des modifications. Le code produit se consulte dans la <a href="#cote-a-cote">comparaison côte à côte</a>.</p>
 
 <div class="card">
 <header>
@@ -456,12 +452,11 @@ h2 { scroll-margin-top: 1.2rem; }
 <span class="spacer"></span>
 <span class="stat">8.5s · $0.0700 · 1 tours · +0/-0</span>
 </header>
-<div class="body split">
+<div class="body">
 <div class="card-info">
 <p class="meta-list">Artefacts : <code>vanilla/run-1</code></p>
 <div class="result"><p>Agent({description: &#34;Survey&#34;, subagent_type: &#34;Explore&#34;})</p></div>
 </div>
-<div class="card-diff"><p class="empty">Aucune modification.</p></div>
 </div>
 </div>
 
@@ -472,15 +467,16 @@ h2 { scroll-margin-top: 1.2rem; }
 <span class="spacer"></span>
 <span class="stat">120.0s · $0.5000 · 21 tours · +100/-0</span>
 </header>
-<div class="body split">
+<div class="body">
 <div class="card-info">
 <p class="meta-list">Artefacts : <code>vanilla/run-2</code></p>
 <div class="result"><p>Tests ajoutés.</p></div>
+<h4 class="detail-sub">Vérifications</h4>
+<ul class="checklist">
+<li class="ok">go test</li>
+<li class="ok">go vet</li>
+</ul>
 </div>
-<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/x_test.go b/x_test.go</span>
-<span class="hunk">@@ -0,0 +1 @@</span>
-<span class="add">+// test</span>
-</pre></div>
 </div>
 </div>
 
@@ -491,15 +487,16 @@ h2 { scroll-margin-top: 1.2rem; }
 <span class="spacer"></span>
 <span class="stat">120.0s · $0.5000 · 23 tours · +100/-0</span>
 </header>
-<div class="body split">
+<div class="body">
 <div class="card-info">
 <p class="meta-list">Artefacts : <code>vanilla/run-3</code></p>
 <div class="result"><p>Tests ajoutés.</p></div>
+<h4 class="detail-sub">Vérifications</h4>
+<ul class="checklist">
+<li class="ko">go test <span class="stat">…FAIL</span></li>
+<li class="ok">go vet</li>
+</ul>
 </div>
-<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/x_test.go b/x_test.go</span>
-<span class="hunk">@@ -0,0 +1 @@</span>
-<span class="add">+// test</span>
-</pre></div>
 </div>
 </div>
 
@@ -510,15 +507,16 @@ h2 { scroll-margin-top: 1.2rem; }
 <span class="spacer"></span>
 <span class="stat">120.0s · $0.5000 · 19 tours · +100/-0</span>
 </header>
-<div class="body split">
+<div class="body">
 <div class="card-info">
 <p class="meta-list">Artefacts : <code>skill/run-1</code></p>
 <div class="result"><p>Tests ajoutés.</p></div>
+<h4 class="detail-sub">Vérifications</h4>
+<ul class="checklist">
+<li class="ok">go test</li>
+<li class="ok">go vet</li>
+</ul>
 </div>
-<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/x_test.go b/x_test.go</span>
-<span class="hunk">@@ -0,0 +1 @@</span>
-<span class="add">+// test</span>
-</pre></div>
 </div>
 </div>
 
@@ -529,15 +527,16 @@ h2 { scroll-margin-top: 1.2rem; }
 <span class="spacer"></span>
 <span class="stat">120.0s · $0.5000 · 20 tours · +100/-0</span>
 </header>
-<div class="body split">
+<div class="body">
 <div class="card-info">
 <p class="meta-list">Artefacts : <code>skill/run-2</code></p>
 <div class="result"><p>Tests ajoutés.</p></div>
+<h4 class="detail-sub">Vérifications</h4>
+<ul class="checklist">
+<li class="ok">go test</li>
+<li class="ok">go vet</li>
+</ul>
 </div>
-<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/x_test.go b/x_test.go</span>
-<span class="hunk">@@ -0,0 +1 @@</span>
-<span class="add">+// test</span>
-</pre></div>
 </div>
 </div>
 
@@ -548,15 +547,16 @@ h2 { scroll-margin-top: 1.2rem; }
 <span class="spacer"></span>
 <span class="stat">120.0s · $0.5000 · 22 tours · +100/-0</span>
 </header>
-<div class="body split">
+<div class="body">
 <div class="card-info">
 <p class="meta-list">Artefacts : <code>skill/run-3</code></p>
 <div class="result"><p>Tests ajoutés.</p></div>
+<h4 class="detail-sub">Vérifications</h4>
+<ul class="checklist">
+<li class="ok">go test</li>
+<li class="ok">go vet</li>
+</ul>
 </div>
-<div class="card-diff"><pre class="diff"><span class="meta">diff --git a/x_test.go b/x_test.go</span>
-<span class="hunk">@@ -0,0 +1 @@</span>
-<span class="add">+// test</span>
-</pre></div>
 </div>
 </div>
 

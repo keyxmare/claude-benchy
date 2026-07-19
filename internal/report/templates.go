@@ -111,32 +111,6 @@ func levelSymbol(level string) string {
 	}
 }
 
-// diffHTML renders a unified diff as a colourised, HTML-escaped block.
-func diffHTML(patch string) htmltmpl.HTML {
-	if strings.TrimSpace(patch) == "" {
-		return htmltmpl.HTML(`<p class="empty">Aucune modification.</p>`)
-	}
-	var b strings.Builder
-	b.WriteString(`<pre class="diff">`)
-	for _, line := range strings.Split(patch, "\n") {
-		class := "ctx"
-		switch {
-		case strings.HasPrefix(line, "+++"), strings.HasPrefix(line, "---"),
-			strings.HasPrefix(line, "diff "), strings.HasPrefix(line, "index "):
-			class = "meta"
-		case strings.HasPrefix(line, "@@"):
-			class = "hunk"
-		case strings.HasPrefix(line, "+"):
-			class = "add"
-		case strings.HasPrefix(line, "-"):
-			class = "del"
-		}
-		fmt.Fprintf(&b, `<span class="%s">%s</span>`+"\n", class, html.EscapeString(line))
-	}
-	b.WriteString("</pre>")
-	return htmltmpl.HTML(b.String())
-}
-
 // inlineHTML renders the inline Markdown subset (**bold**, `code`) inside an
 // already HTML-escaped string.
 func inlineHTML(escaped string) string {
@@ -374,10 +348,15 @@ Chaque axe comparé entre configs (✓ meilleur, ✗ moins bon).
 
 {{.Metrics.Result}}
 {{- end}}
+{{- if .Checks}}
 
-` + "```diff" + `
-{{.Patch}}
-` + "```" + `
+**Vérifications**
+{{range .Checks}}
+- {{if .Passed}}✓{{else}}✗{{end}} {{.Name}}{{with .Detail}} — {{. | mdCell}}{{end}}
+{{- end}}
+{{- end}}
+
+_Code produit : voir la comparaison côte à côte._
 {{end}}`
 
 const htmlSource = `<!doctype html>
@@ -536,23 +515,18 @@ table.matrix tfoot td .spread { color: var(--ink-quiet); font-weight: 400; font-
 .card > header .stat { color: var(--ink-quiet); font-family: var(--font-ui); font-size: 0.85rem;
   font-variant-numeric: tabular-nums; }
 .card .body { padding: 0.2rem 1rem 1rem; }
-.card .body.split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.4rem; align-items: start; }
-.card-info, .card-diff { min-width: 0; }
+.card-info { min-width: 0; }
 .card-info > :first-child { margin-top: 0; }
-.card-diff pre.diff { margin: 0; }
-@media (min-width: 940px) {
-  .card .body.split { grid-template-columns: minmax(260px, 360px) minmax(0, 1fr); }
-}
 .result p { margin: 0.6rem 0; }
 .result p:first-child { margin-top: 0.4rem; }
 .result ul { margin: 0.6rem 0; padding-left: 1.2rem; }
-pre.diff { background: var(--surface-quiet); border: 1px solid var(--border); border-radius: var(--r-ctl);
-  padding: 0.8rem 1rem; overflow-x: auto; font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.35; }
-pre.diff span { display: block; white-space: pre; }
-pre.diff .add { background: var(--add-bg); color: var(--add-fg); }
-pre.diff .del { background: var(--del-bg); color: var(--del-fg); }
-pre.diff .hunk { color: var(--hunk); }
-pre.diff .meta { color: var(--ink-quiet); }
+h4.detail-sub { font-family: var(--font-display); font-size: 0.9rem; margin: 1rem 0 0.4rem; }
+ul.checklist { list-style: none; margin: 0.3rem 0 0; padding: 0; }
+ul.checklist li { padding: 0.15rem 0; }
+ul.checklist li.ok::before { content: "\2713"; color: var(--ok); font-weight: 800; margin-right: 0.6rem; }
+ul.checklist li.ko::before { content: "\2717"; color: var(--err); font-weight: 800; margin-right: 0.6rem; }
+ul.checklist li .stat { color: var(--ink-quiet); font-family: var(--font-mono); font-size: 0.8rem; }
+form.apply { margin: 1rem 0 0; }
 .sxs-controls { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: 1rem 0; align-items: center; }
 .sxs-controls label { color: var(--ink-quiet); font-family: var(--font-display); font-size: 0.78rem;
   text-transform: uppercase; letter-spacing: 0.03em; display: flex; gap: 0.5rem; align-items: center; }
@@ -757,6 +731,7 @@ h2 { scroll-margin-top: 1.2rem; }
 <div id="sxs-body"></div>
 
 <h2 id="detail">Détail par config</h2>
+<p class="meta-list">Résultat, vérifications déterministes et application des modifications. Le code produit se consulte dans la <a href="#cote-a-cote">comparaison côte à côte</a>.</p>
 {{range .Runs}}
 <div class="card">
 <header>
@@ -765,7 +740,7 @@ h2 { scroll-margin-top: 1.2rem; }
 <span class="spacer"></span>
 <span class="stat">{{seconds .Metrics.DurationMS}} · {{cost .}} · {{.Metrics.NumTurns}} tours · +{{.Diff.Insertions}}/-{{.Diff.Deletions}}</span>
 </header>
-<div class="body split">
+<div class="body">
 <div class="card-info">
 <p class="meta-list">Artefacts : <code>{{.ArtifactDir}}</code></p>
 {{- if .Err}}
@@ -774,8 +749,22 @@ h2 { scroll-margin-top: 1.2rem; }
 {{- if .Metrics.Result}}
 <div class="result">{{.Metrics.Result | resultHTML}}</div>
 {{- end}}
+{{- if .Checks}}
+<h4 class="detail-sub">Vérifications</h4>
+<ul class="checklist">
+{{- range .Checks}}
+<li class="{{if .Passed}}ok{{else}}ko{{end}}">{{.Name}}{{with .Detail}} <span class="stat">{{.}}</span>{{end}}</li>
+{{- end}}
+</ul>
+{{- end}}
+{{- if and $.TranscriptBase (gt .Diff.FilesChanged 0)}}
+<form class="apply" method="post" action="/apply" onsubmit="return confirm('Appliquer {{.Diff.FilesChanged}} fichier(s) modifié(s) par « {{.Label}} » sur le projet testé ? Les changements ne seront pas committés.');">
+<input type="hidden" name="dir" value="{{$.TranscriptBase}}">
+<input type="hidden" name="artifact" value="{{.ArtifactDir}}">
+<button type="submit" class="primary">Appliquer au projet ({{.Diff.FilesChanged}} fichier(s))</button>
+</form>
+{{- end}}
 </div>
-<div class="card-diff">{{ diffHTML .Patch }}</div>
 </div>
 </div>
 {{end}}
@@ -950,7 +939,6 @@ func htmlFuncs() htmltmpl.FuncMap {
 	for k, v := range funcs {
 		fm[k] = v
 	}
-	fm["diffHTML"] = diffHTML
 	fm["resultHTML"] = resultHTML
 	fm["markdownInline"] = markdownInline
 	fm["filesJSON"] = filesJSON

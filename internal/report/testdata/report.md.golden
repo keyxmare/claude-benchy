@@ -95,13 +95,12 @@ Ajout de `GET /health`.
 **Résumé** : nouvelle route renvoyant
 200 avec un corps JSON minimal. Aucun test existant impacté.
 
-```diff
-diff --git a/server.js b/server.js
-@@ -1,2 +1,5 @@
- context
-+added line
--removed line
-```
+**Vérifications**
+
+- ✓ tests
+- ✓ endpoint présent — fichier présent
+
+_Code produit : voir la comparaison côte à côte._
 
 ### strict — ok
 
@@ -111,18 +110,16 @@ diff --git a/server.js b/server.js
 
 Endpoint ajouté avec validation du statut.
 
-```diff
-diff --git a/server.js b/server.js
-@@ -1,2 +1,6 @@
- context
-+more lines
-```
+**Vérifications**
+
+- ✗ tests — …FAIL server.test.js
+- ✓ endpoint présent — fichier présent
+
+_Code produit : voir la comparaison côte à côte._
 
 ### broken — erreur
 
 - **Artefacts :** broken
 - **Erreur :** docker run: exit status 1
 
-```diff
-
-```
+_Code produit : voir la comparaison côte à côte._

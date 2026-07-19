@@ -94,9 +94,7 @@ Chaque axe comparé entre configs (✓ meilleur, ✗ moins bon).
 
 Agent({description: "Survey", subagent_type: "Explore"})
 
-```diff
-
-```
+_Code produit : voir la comparaison côte à côte._
 
 ### vanilla · run 2 — ok
 
@@ -106,11 +104,12 @@ Agent({description: "Survey", subagent_type: "Explore"})
 
 Tests ajoutés.
 
-```diff
-diff --git a/x_test.go b/x_test.go
-@@ -0,0 +1 @@
-+// test
-```
+**Vérifications**
+
+- ✓ go test
+- ✓ go vet
+
+_Code produit : voir la comparaison côte à côte._
 
 ### vanilla · run 3 — ok
 
@@ -120,11 +119,12 @@ diff --git a/x_test.go b/x_test.go
 
 Tests ajoutés.
 
-```diff
-diff --git a/x_test.go b/x_test.go
-@@ -0,0 +1 @@
-+// test
-```
+**Vérifications**
+
+- ✗ go test — …FAIL
+- ✓ go vet
+
+_Code produit : voir la comparaison côte à côte._
 
 ### skill — ok
 
@@ -134,11 +134,12 @@ diff --git a/x_test.go b/x_test.go
 
 Tests ajoutés.
 
-```diff
-diff --git a/x_test.go b/x_test.go
-@@ -0,0 +1 @@
-+// test
-```
+**Vérifications**
+
+- ✓ go test
+- ✓ go vet
+
+_Code produit : voir la comparaison côte à côte._
 
 ### skill · run 2 — ok
 
@@ -148,11 +149,12 @@ diff --git a/x_test.go b/x_test.go
 
 Tests ajoutés.
 
-```diff
-diff --git a/x_test.go b/x_test.go
-@@ -0,0 +1 @@
-+// test
-```
+**Vérifications**
+
+- ✓ go test
+- ✓ go vet
+
+_Code produit : voir la comparaison côte à côte._
 
 ### skill · run 3 — ok
 
@@ -162,8 +164,9 @@ diff --git a/x_test.go b/x_test.go
 
 Tests ajoutés.
 
-```diff
-diff --git a/x_test.go b/x_test.go
-@@ -0,0 +1 @@
-+// test
-```
+**Vérifications**
+
+- ✓ go test
+- ✓ go vet
+
+_Code produit : voir la comparaison côte à côte._

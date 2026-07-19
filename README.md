@@ -127,6 +127,12 @@ déjà pris par le conteneur `docker compose up`).
   l'interface **et** via `benchy run`, qui le persiste désormais) ; pour un run
   plus ancien, la config est retrouvée depuis le `bench.yaml` source situé
   au-dessus du dossier de résultats, à défaut reconstruite au mieux.
+- **Détail par config** : chaque config liste le résultat et le **détail de ses
+  vérifications** (chaque check, ✓/✗, avec sa sortie d'échec). Le code produit ne
+  s'y affiche plus : il vit dans la comparaison côte à côte, pour ne pas dupliquer.
+- **Appliquer au projet** : depuis le rapport, « Appliquer au projet » applique
+  le diff d'une config (`git apply`) sur l'app testée, laissé **non committé**
+  pour relecture — pour adopter la sortie d'une config en un clic.
 - **Consulter les fichiers** : les champs app et bundle offrent un bouton 👁 qui
   ouvre une arborescence en lecture seule avec aperçu du contenu de chaque
   fichier — pratique pour vérifier ce que contient un bundle de config ou l'app

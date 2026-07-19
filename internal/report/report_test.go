@@ -333,3 +333,26 @@ func TestGolden(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyButtonOnlyWhenServed(t *testing.T) {
+	served := sample()
+	served.TranscriptBase = "benches/x/results/ts"
+	var withServer bytes.Buffer
+	if err := WriteHTML(&withServer, served); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(withServer.String(), `action="/apply"`) {
+		t.Error("served report should offer an apply form")
+	}
+	if !strings.Contains(withServer.String(), `name="artifact" value="vanilla"`) {
+		t.Error("apply form should carry the run's artifact dir")
+	}
+
+	var standalone bytes.Buffer
+	if err := WriteHTML(&standalone, sample()); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(standalone.String(), `action="/apply"`) {
+		t.Error("standalone report (no server) must not offer an apply form")
+	}
+}
