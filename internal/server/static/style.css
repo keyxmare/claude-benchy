@@ -225,7 +225,10 @@ button.danger, .danger { border-color: var(--err); color: var(--err); background
   background: var(--surface); color: var(--ink); border-radius: var(--r-ctl); padding: 0.3rem 0.6rem; cursor: pointer; }
 .carousel-nav button:disabled { opacity: 0.35; cursor: default; }
 .agents { display: flex; gap: 1rem; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding-bottom: 0.5rem; }
-.agent { flex: 0 0 clamp(280px, 31%, 460px); scroll-snap-align: start; border: 1px solid var(--border); border-radius: var(--r-ctl); overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+/* Grow to fill the row when there are 1–3 agents; beyond 3, each keeps a third
+   of the width (min 320px) and the extras scroll — grow fills, shrink 0 + a
+   one-third basis caps the count per view. */
+.agent { flex: 1 0 calc((100% - 2rem) / 3); min-width: 320px; scroll-snap-align: start; border: 1px solid var(--border); border-radius: var(--r-ctl); overflow: hidden; display: flex; flex-direction: column; }
 .agent-head { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.7rem; background: var(--surface-quiet); border-bottom: 1px solid var(--border); }
 .agent-name { font-family: var(--font-mono); font-weight: 700; font-size: 0.8rem; }
 .agent-link { margin-left: auto; font-family: var(--font-ui); font-size: 0.75rem; text-decoration: none; color: var(--accent-text); }
