@@ -44,12 +44,9 @@ func Render(line []byte) []string {
 	}
 	switch e.Type {
 	case "system":
-		if e.Subtype == "init" {
-			if e.Model != "" {
-				return []string{"· session démarrée (" + e.Model + ")"}
-			}
-			return []string{"· session démarrée"}
-		}
+		// The init banner (model, tools, cwd…) is orchestration noise already
+		// shown in the run's top console; the agent feed shows only its work.
+		return nil
 	case "assistant":
 		return renderAssistant(e.Message.Content)
 	case "user":
@@ -80,26 +77,26 @@ func renderToolUse(name string, input json.RawMessage) []string {
 	_ = json.Unmarshal(input, &m)
 	switch name {
 	case "Bash":
-		return []string{"🔧 Bash(" + truncate(str(m["command"]), 140) + ")"}
+		return []string{"⏺ Bash(" + truncate(str(m["command"]), 140) + ")"}
 	case "Edit", "MultiEdit":
-		lines := []string{"✏️ " + name + " " + str(m["file_path"])}
+		lines := []string{"⏺ " + name + "(" + str(m["file_path"]) + ")"}
 		if d := editSnippet(m); d != "" {
-			lines = append(lines, "↳ "+d)
+			lines = append(lines, "  ⎿ "+d)
 		}
 		return lines
 	case "Write":
-		return []string{"✏️ Write " + str(m["file_path"])}
+		return []string{"⏺ Write(" + str(m["file_path"]) + ")"}
 	case "Read":
-		return []string{"📖 Read " + str(m["file_path"])}
+		return []string{"⏺ Read(" + str(m["file_path"]) + ")"}
 	case "Grep":
-		return []string{"🔎 Grep(" + truncate(str(m["pattern"]), 100) + ")"}
+		return []string{"⏺ Grep(" + truncate(str(m["pattern"]), 100) + ")"}
 	case "Glob":
-		return []string{"🔎 Glob(" + truncate(str(m["pattern"]), 100) + ")"}
+		return []string{"⏺ Glob(" + truncate(str(m["pattern"]), 100) + ")"}
 	default:
 		if s := compact(input); s != "" && s != "{}" {
-			return []string{"🔧 " + name + "(" + truncate(s, 120) + ")"}
+			return []string{"⏺ " + name + "(" + truncate(s, 120) + ")"}
 		}
-		return []string{"🔧 " + name}
+		return []string{"⏺ " + name}
 	}
 }
 
@@ -122,9 +119,9 @@ func renderResults(blocks []renderBlock) []string {
 		if text == "" {
 			continue
 		}
-		prefix := "↳ "
+		prefix := "  ⎿ "
 		if b.IsError {
-			prefix = "↳ ⚠ "
+			prefix = "  ⎿ ⚠ "
 		}
 		out = append(out, prefix+summarise(text, 160))
 	}

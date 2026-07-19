@@ -150,7 +150,6 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 		}
 		if attempt < attempts {
 			opts.log("↻ %-18s run sans effet (0 outil / diff vide), relance %d/%d", rel, attempt, attempts-1)
-			opts.agent(AgentEvent{Agent: rel, Line: fmt.Sprintf("↻ run sans effet, relance %d/%d", attempt, attempts-1)})
 		}
 	}
 
@@ -162,7 +161,7 @@ func execJob(ctx context.Context, s *spec.Spec, j job, outputRoot string, opts O
 	switch {
 	case res.Err != "":
 		opts.log("✗ %-18s erreur: %s", rel, firstLine(res.Err))
-		opts.agent(AgentEvent{Agent: rel, Line: "✗ " + firstLine(res.Err), Status: "failed"})
+		opts.agent(AgentEvent{Agent: rel, Status: "failed"})
 	case res.Degenerate():
 		opts.log("⚠ %-18s sans effet après %d tentative(s) (écarté des classements)", rel, attempts)
 		opts.agent(AgentEvent{Agent: rel, Status: "degenerate"})

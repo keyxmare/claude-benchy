@@ -13,9 +13,9 @@ func TestRenderAssistantTextAndTools(t *testing.T) {
 		want []string
 	}{
 		{
-			"init",
+			"init dropped",
 			`{"type":"system","subtype":"init","model":"claude-sonnet"}`,
-			[]string{"· session démarrée (claude-sonnet)"},
+			nil,
 		},
 		{
 			"text",
@@ -25,32 +25,52 @@ func TestRenderAssistantTextAndTools(t *testing.T) {
 		{
 			"bash",
 			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"go test ./..."}}]}}`,
-			[]string{"🔧 Bash(go test ./...)"},
+			[]string{"⏺ Bash(go test ./...)"},
 		},
 		{
 			"edit with snippet",
 			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"util/scale.go","old_string":"return v*f","new_string":"return v*f + off"}}]}}`,
-			[]string{"✏️ Edit util/scale.go", "↳ return v*f → return v*f + off"},
+			[]string{"⏺ Edit(util/scale.go)", "  ⎿ return v*f → return v*f + off"},
 		},
 		{
 			"read",
 			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"main.go"}}]}}`,
-			[]string{"📖 Read main.go"},
+			[]string{"⏺ Read(main.go)"},
 		},
 		{
-			"unknown tool",
+			"write",
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":"out.go"}}]}}`,
+			[]string{"⏺ Write(out.go)"},
+		},
+		{
+			"grep",
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Grep","input":{"pattern":"func"}}]}}`,
+			[]string{"⏺ Grep(func)"},
+		},
+		{
+			"glob",
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Glob","input":{"pattern":"*.go"}}]}}`,
+			[]string{"⏺ Glob(*.go)"},
+		},
+		{
+			"unknown tool with input",
 			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Task","input":{"prompt":"do it"}}]}}`,
-			[]string{`🔧 Task({"prompt":"do it"})`},
+			[]string{`⏺ Task({"prompt":"do it"})`},
+		},
+		{
+			"unknown tool no input",
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Task","input":{}}]}}`,
+			[]string{"⏺ Task"},
 		},
 		{
 			"tool result",
 			`{"type":"user","message":{"content":[{"type":"tool_result","content":"ok util\nFAIL geometry"}]}}`,
-			[]string{"↳ ok util …(+1 lignes)"},
+			[]string{"  ⎿ ok util …(+1 lignes)"},
 		},
 		{
 			"tool result error",
 			`{"type":"user","message":{"content":[{"type":"tool_result","is_error":true,"content":[{"type":"text","text":"boom"}]}]}}`,
-			[]string{"↳ ⚠ boom"},
+			[]string{"  ⎿ ⚠ boom"},
 		},
 		{
 			"result success",
@@ -62,6 +82,7 @@ func TestRenderAssistantTextAndTools(t *testing.T) {
 			`{"type":"result","subtype":"error_max_turns","is_error":true}`,
 			[]string{"✗ échec (error_max_turns)"},
 		},
+		{"unknown type", `{"type":"whatever"}`, nil},
 		{"blank", "   ", nil},
 		{"garbage", "not json", nil},
 	}
@@ -83,11 +104,11 @@ func TestLiveWriterSplitsAndFlushes(t *testing.T) {
 	_, _ = w.Write([]byte(`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bas`))
 	_, _ = w.Write([]byte("h\",\"input\":{\"command\":\"ls\"}}]}}\n{\"type\":\"result\",\"subtype\":\"success\",\"num_turns\":1,\"total_cost_usd\":0.5}"))
 
-	if want := []string{"🔧 Bash(ls)"}; !slices.Equal(got, want) {
+	if want := []string{"⏺ Bash(ls)"}; !slices.Equal(got, want) {
 		t.Fatalf("before flush =\n%q\nwant %q", got, want)
 	}
 	w.Flush()
-	if want := []string{"🔧 Bash(ls)", "✓ terminé · 1 tours · $0.5000"}; !slices.Equal(got, want) {
+	if want := []string{"⏺ Bash(ls)", "✓ terminé · 1 tours · $0.5000"}; !slices.Equal(got, want) {
 		t.Fatalf("after flush =\n%q\nwant %q", got, want)
 	}
 }

@@ -38,6 +38,10 @@
 
   <section class="panel" id="agents-panel" hidden>
     <h2 class="panel-sub">Agents · sortie en direct</h2>
+    <div class="carousel-nav">
+      <button type="button" id="agents-prev" aria-label="Précédent">←</button>
+      <button type="button" id="agents-next" aria-label="Suivant">→</button>
+    </div>
     <div id="agents" class="agents"></div>
   </section>
 </main>
@@ -50,6 +54,21 @@
   var agentsPanel = document.getElementById('agents-panel');
   var agentsBox = document.getElementById('agents');
   var agents = {};
+
+  // Horizontal carousel: at most ~3 cards show at once; the rest scroll in.
+  var prevBtn = document.getElementById('agents-prev');
+  var nextBtn = document.getElementById('agents-next');
+  function updateNav() {
+    var max = agentsBox.scrollWidth - agentsBox.clientWidth - 1;
+    prevBtn.disabled = agentsBox.scrollLeft <= 0;
+    nextBtn.disabled = agentsBox.scrollLeft >= max;
+  }
+  function scrollAgents(dir) {
+    agentsBox.scrollBy({ left: dir * agentsBox.clientWidth * 0.9, behavior: 'smooth' });
+  }
+  prevBtn.addEventListener('click', function () { scrollAgents(-1); });
+  nextBtn.addEventListener('click', function () { scrollAgents(1); });
+  agentsBox.addEventListener('scroll', updateNav);
 
   function agentPanel(key) {
     if (agents[key]) { return agents[key]; }
@@ -78,6 +97,7 @@
     wrap.appendChild(pre);
     agentsBox.appendChild(wrap);
     agents[key] = { pre: pre, badge: badge };
+    updateNav();
     return agents[key];
   }
 

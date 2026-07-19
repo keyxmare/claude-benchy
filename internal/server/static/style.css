@@ -217,10 +217,15 @@ button.danger, .danger { border-color: var(--err); color: var(--err); background
 .badge.degenerate { color: var(--warn); background: color-mix(in srgb, var(--warn) 18%, transparent); }
 .badge.failed, .badge.stopped { color: var(--err); background: color-mix(in srgb, var(--err) 16%, transparent); }
 
-/* live per-agent output panels on the run page */
+/* live per-agent output panels on the run page — a horizontal carousel so at
+   most ~3 cards share a row whatever the width, the rest scroll into view. */
 .panel-sub { font-family: var(--font-display); font-weight: 700; font-size: 1rem; margin: 0 0 0.8rem; }
-.agents { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1rem; }
-.agent { border: 1px solid var(--border); border-radius: var(--r-ctl); overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.carousel-nav { display: flex; gap: 0.4rem; justify-content: flex-end; margin: -2.2rem 0 0.6rem; }
+.carousel-nav button { font-family: var(--font-ui); font-size: 0.9rem; line-height: 1; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--ink); border-radius: var(--r-ctl); padding: 0.3rem 0.6rem; cursor: pointer; }
+.carousel-nav button:disabled { opacity: 0.35; cursor: default; }
+.agents { display: flex; gap: 1rem; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding-bottom: 0.5rem; }
+.agent { flex: 0 0 clamp(280px, 31%, 460px); scroll-snap-align: start; border: 1px solid var(--border); border-radius: var(--r-ctl); overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
 .agent-head { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.7rem; background: var(--surface-quiet); border-bottom: 1px solid var(--border); }
 .agent-name { font-family: var(--font-mono); font-weight: 700; font-size: 0.8rem; }
 .agent-link { margin-left: auto; font-family: var(--font-ui); font-size: 0.75rem; text-decoration: none; color: var(--accent-text); }

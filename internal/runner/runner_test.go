@@ -114,7 +114,7 @@ func TestRunEndToEndWithFake(t *testing.T) {
 	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && e.Status == "running" }) {
 		t.Errorf("expected a running status event for agent a, got %+v", events)
 	}
-	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && strings.HasPrefix(e.Line, "✏️ Write") }) {
+	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && strings.HasPrefix(e.Line, "⏺ Write") }) {
 		t.Errorf("expected a rendered tool-use line for agent a, got %+v", events)
 	}
 	if !hasAgent(func(e AgentEvent) bool { return e.Agent == "a" && e.Status == "done" }) {
