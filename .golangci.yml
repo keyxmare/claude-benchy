@@ -1,22 +1,18 @@
 version: "2"
 
-# Plancher mesurable des principes de conception (couche 1). Les principes de
-# jugement (SRP, LSP, YAGNI, PoLA…) relèvent de la rule go-design.md et de
-# standards-auditor, pas du linter. Seuils volontairement progressifs :
-# ils passent sur l'existant et se resserreront ensuite.
 linters:
   enable:
-    - gocyclo        # KISS : complexité cyclomatique par fonction
-    - gocognit       # KISS : complexité cognitive
-    - funlen         # KISS / SRP : fonctions trop longues
-    - nestif         # KISS : imbrication de if
-    - dupl           # DRY : duplication mécanique (garde-fou, pas RoT)
-    - interfacebloat  # ISP : interfaces trop larges
-    - errorlint      # Fail Fast : comparaison/wrapping d'erreurs correct
-    - unparam        # PoLP : paramètres et retours inutilisés
-    - revive         # discipline générale, surface exportée
-    - gocritic       # LoD / idiomes / diagnostics
-    - unconvert      # Boy Scout : conversions superflues
+    - gocyclo
+    - gocognit
+    - funlen
+    - nestif
+    - dupl
+    - interfacebloat
+    - errorlint
+    - unparam
+    - revive
+    - gocritic
+    - unconvert
 
   settings:
     gocyclo:
@@ -36,8 +32,6 @@ linters:
   exclusions:
     generated: lax
     rules:
-      # Les tests sont longs et répétitifs par nature (table-driven, AAA) ;
-      # leurs helpers gardent des paramètres symétriques (unparam).
       - path: _test\.go
         linters:
           - funlen

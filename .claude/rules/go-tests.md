@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*_test.go"
+---
+
 # Règle — Conventions de test Go
 
 Conventions toujours actives pour les tests Go de ce projet. La **démarche**
