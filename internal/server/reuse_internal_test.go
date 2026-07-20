@@ -13,7 +13,7 @@ func intPtr(n int) *int { return &n }
 
 func TestFormFromDocMapsEveryField(t *testing.T) {
 	d := benchDoc{
-		Prompt: "p", PromptFile: "pf", App: "a", Model: "opus",
+		Prompt: "p", App: "a", Model: "opus",
 		Runs: 3, Concurrency: 2, Retries: intPtr(5), KeepBaseConfig: true,
 		Auth:     &authDoc{ConfigDir: "/cfg"},
 		Sandbox:  &sandboxDoc{Image: "img"},
@@ -25,7 +25,7 @@ func TestFormFromDocMapsEveryField(t *testing.T) {
 	got := formFromDoc(d)
 
 	want := formValues{
-		Prompt: "p", PromptFile: "pf", App: "a", Model: "opus",
+		Prompt: "p", App: "a", Model: "opus",
 		Runs: "3", Concurrency: "2", Retries: "5",
 		AuthConfigDir: "/cfg", SandboxImage: "img", Output: "out",
 		EvalModel: "haiku", Rubric: "r1\nr2", KeepBaseConfig: true,

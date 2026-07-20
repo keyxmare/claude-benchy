@@ -85,7 +85,6 @@ func nearestBench(dir string) (benchDoc, bool) {
 func formFromDoc(d benchDoc) formValues {
 	fv := formValues{
 		Prompt:         d.Prompt,
-		PromptFile:     d.PromptFile,
 		App:            d.App,
 		Model:          d.Model,
 		Output:         d.Output,

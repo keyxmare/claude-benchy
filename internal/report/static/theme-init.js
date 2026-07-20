@@ -1,0 +1,1 @@
+try{var t=localStorage.getItem("benchy-theme");if(t){document.documentElement.setAttribute("data-theme",t);}}catch(e){}

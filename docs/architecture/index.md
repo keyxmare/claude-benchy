@@ -47,7 +47,7 @@ flowchart TD
 | `internal/claude` | Parse le transcript `stream-json` (métriques) et le rend en lignes lisibles. | [internal/claude](internal/claude.md) |
 | `internal/diffcap` | Capture les changements du workspace en diff unifié vs baseline. | [internal/diffcap](internal/diffcap.md) |
 | `internal/runner` | Cœur : ordonnancement, runs sans effet + relance, juge LLM, reload. | [internal/runner](internal/runner.md) |
-| `internal/report` | Agrège les résultats en `report.md` + `report.html` (design Gazoline). | [internal/report](internal/report.md) |
+| `internal/report` | Agrège les résultats en `report.md` + `report.html` (design Benchy). | [internal/report](internal/report.md) |
 | `internal/server` | Dashboard web (bibliothèque standard) : formulaire, live SSE, historique. | [internal/server](internal/server.md) |
 
 ## Dépendances externes

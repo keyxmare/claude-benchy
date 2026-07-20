@@ -26,11 +26,13 @@ Le rapport HTML réunit, en plus du tableau de métriques :
   par fichier, le code complet produit de part et d'autre, lignes divergentes
   surlignées.
 
-Le rapport HTML suit le design system **Gazoline** de Motoblouz (noir/blanc
-purs, accent jaune `#f1ab00`, Montserrat) et charge Montserrat/Inter depuis
-Google Fonts, avec repli sur les polices système hors-ligne. Pour éviter tout
-appel externe (RGPD, consultation hors-ligne), les polices peuvent être
-auto-hébergées / inlinées en `@font-face` — à demander si besoin.
+Le rapport HTML et le dashboard partagent le design system **Benchy** : sombre
+par défaut avec bascule clair (suit `prefers-color-scheme` au premier
+affichage, puis le choix est persisté), accent jaune `#f5b301`, polices Space
+Grotesk / Inter / JetBrains Mono chargées depuis Google Fonts, avec repli sur
+les polices système hors-ligne. Pour éviter tout appel externe (RGPD,
+consultation hors-ligne), les polices peuvent être auto-hébergées / inlinées en
+`@font-face` — à demander si besoin.
 
 Cas d'usage : écrire une skill/rule, la décliner en variantes, et voir
 laquelle produit la meilleure modification sur une app de référence.
@@ -146,7 +148,7 @@ déjà pris par le conteneur `docker compose up`).
   fichier — pratique pour vérifier ce que contient un bundle de config ou l'app
   de test avant de lancer.
 - **Sélection des chemins** : chaque champ de chemin (app, bundle, dossier de
-  sortie, fichier de prompt, configDir) offre un bouton 📁 qui ouvre un
+  sortie, configDir) offre un bouton 📁 qui ouvre un
   explorateur de dossiers **côté serveur** — le navigateur ne divulgue pas les
   chemins absolus, c'est donc benchy qui liste le système de fichiers de l'hôte.
   Le glisser-déposer depuis un explorateur de fichiers est géré en meilleur
@@ -178,7 +180,7 @@ d'appel API :
 ### Fichier de banc
 
 ```yaml
-prompt: |                      # ou promptFile: ./prompts/x.md
+prompt: |                      # la consigne, en clair
   Ajoute un endpoint /health renvoyant 200.
 app: ./app-under-test          # dossier de l'app de test (git non requis)
 model: sonnet                  # défaut, surchargeable par config

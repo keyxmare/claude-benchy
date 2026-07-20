@@ -4,177 +4,276 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>benchy</title>
+  <script>{{themeInitJS}}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body data-root="{{.Root}}">
 <header class="topbar">
-  <span class="brand">benchy</span>
+  <a class="brand" href="/"><span class="logo">b</span><span class="name">benchy</span></a>
   <span class="root" title="racine scannée">{{.Root}}</span>
+  <span class="spacer"></span>
+  <nav class="nav-seg" aria-label="Sections">
+    <a class="seg active" href="/" aria-current="page">Dashboard</a>
+    <span class="seg disabled" aria-disabled="true" title="Disponible pendant un run">Run live</span>
+    {{if .History}}<a class="seg" href="/report?dir={{(index .History 0).Dir}}">Rapport</a>{{else}}<span class="seg disabled" aria-disabled="true" title="Aucun rapport">Rapport</span>{{end}}
+  </nav>
+  <button type="button" id="theme-toggle" class="theme-toggle" title="Basculer le thème">☀</button>
 </header>
 
-<main class="layout">
-  <section class="panel">
-    <h1>Nouveau bench</h1>
-    {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
-    <div class="import-bar">
-      <label class="muted">Importer une config depuis un bench.yaml
-        <span class="path">
-          <input type="text" class="pathinput" data-pick="file" id="importPath" placeholder="./benches/freedy/bench.yaml">
-          <button type="button" class="pick" aria-label="Parcourir">📁</button>
-          <button type="button" class="primary" id="importBtn">Importer</button>
-        </span>
-      </label>
+<main class="page">
+  <div class="hero">
+    <div>
+      <div class="eyebrow">Banc d'essai · Claude Code</div>
+      <h1>Compare tes configs, garde la meilleure.</h1>
+      <p>Un prompt, une app de test. benchy lance chaque config en isolation et te rend un verdict — diff, métriques, évaluation par un juge.</p>
     </div>
-    <form method="post" action="/run" class="bench-form">
-      <label>Prompt
-        <textarea name="prompt" rows="4" placeholder="Ajoute un endpoint /health renvoyant 200.">{{.Form.Prompt}}</textarea>
-      </label>
-      <label class="muted">…ou fichier de prompt (chemin relatif à la racine)
-        <span class="path">
-          <input type="text" class="pathinput" data-pick="file" name="promptFile" value="{{.Form.PromptFile}}" placeholder="./prompts/x.md">
-          <button type="button" class="pick" aria-label="Parcourir">📁</button>
-        </span>
-      </label>
+    <div class="hero-stats">
+      <div class="stat"><div class="n">{{len .History}}</div><div class="lbl">bancs lancés</div></div>
+      <div class="sep"></div>
+      <div class="stat accent"><div class="n">{{len .Form.Configs}}</div><div class="lbl">configs au banc</div></div>
+    </div>
+  </div>
 
-      <div class="grid">
-        <label>App (dossier de test)
-          <span class="path">
-            <input type="text" class="pathinput" data-pick="dir" name="app" value="{{.Form.App}}" placeholder="./app-under-test" required>
-            <button type="button" class="pick" aria-label="Parcourir">📁</button>
-            <button type="button" class="view" aria-label="Consulter les fichiers">👁</button>
-          </span>
-        </label>
-        <label>Modèle
-          <select name="model">
-            {{$m := .Form.Model}}
-            {{range .Models}}<option value="{{.}}" {{if eq . $m}}selected{{end}}>{{.}}</option>{{end}}
-          </select>
-        </label>
-        <label>Runs
-          <input type="number" name="runs" min="1" value="{{.Form.Runs}}">
-        </label>
-        <label>Concurrence
-          <input type="number" name="concurrency" min="1" value="{{.Form.Concurrency}}">
-        </label>
-        <label title="Relances d'un run sans effet (0 appel d'outil / diff vide) avant de l'écarter. 0 pour désactiver.">Relances
-          <input type="number" name="retries" min="0" value="{{.Form.Retries}}">
-        </label>
+  <div class="layout hist-collapsed" id="layout">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Nouveau bench</h2>
+        <span class="hint">importer un bench.yaml →</span>
       </div>
-
-      <label class="check-inline">
-        <input type="checkbox" name="keepBaseConfig" {{if .Form.KeepBaseConfig}}checked{{end}}>
-        Conserver la config de base de l'app (fusionne les CLAUDE.md au lieu de les remplacer)
-      </label>
-
-      <fieldset>
-        <legend>Configurations</legend>
-        <div id="configs">
-          {{range .Form.Configs}}
-          <div class="row config-row">
-            <input type="text" name="configName" value="{{.Name}}" placeholder="nom (baseline)">
-            <span class="path">
-              <input type="text" class="pathinput" data-pick="dir" name="configBundle" value="{{.Bundle}}" placeholder="bundle (./configs/baseline)">
-              <button type="button" class="pick" aria-label="Parcourir">📁</button>
-              <button type="button" class="view" aria-label="Consulter les fichiers">👁</button>
-            </span>
-            <input type="text" name="configModel" value="{{.Model}}" placeholder="modèle (option)">
-            <input type="text" name="configPrompt" value="{{.Prompt}}" placeholder="prompt (option)">
-            <button type="button" class="remove" aria-label="retirer">×</button>
-          </div>
-          {{end}}
-        </div>
-        <button type="button" class="add" data-target="configs" data-tpl="config-row-tpl">+ config</button>
-      </fieldset>
-
-      <details class="advanced">
-        <summary>Évaluation &amp; options avancées</summary>
-        <div class="grid">
-          <label>Modèle juge
-            <input type="text" name="evalModel" value="{{.Form.EvalModel}}" placeholder="défaut : modèle du bench">
-          </label>
-          <label>Image du bac à sable
-            <input type="text" name="sandboxImage" value="{{.Form.SandboxImage}}" placeholder="claude-benchy:latest">
-          </label>
-          <label>Dossier de sortie
-            <span class="path">
-              <input type="text" class="pathinput" data-pick="dir" name="output" value="{{.Form.Output}}" placeholder="results">
-              <button type="button" class="pick" aria-label="Parcourir">📁</button>
-            </span>
-          </label>
-          <label>Creds OAuth (configDir)
-            <span class="path">
-              <input type="text" class="pathinput" data-pick="dir" name="authConfigDir" value="{{.Form.AuthConfigDir}}" placeholder="~/.claude">
-              <button type="button" class="pick" aria-label="Parcourir">📁</button>
-            </span>
-          </label>
-        </div>
-        <label>Rubric (un critère par ligne)
-          <textarea name="rubric" rows="3" placeholder="Expose GET /health renvoyant 200&#10;Modification minimale">{{.Form.Rubric}}</textarea>
-        </label>
-        <fieldset>
-          <legend>Checks déterministes</legend>
-          <div id="checks">
-            {{range .Form.Checks}}
-            <div class="row check-row">
-              <input type="text" name="checkName" value="{{.Name}}" placeholder="nom">
-              <input type="text" name="checkRun" value="{{.Run}}" placeholder="commande (exit 0)">
-              <input type="text" name="checkFile" value="{{.File}}" placeholder="fichier attendu">
-              <button type="button" class="remove" aria-label="retirer">×</button>
-            </div>
-            {{end}}
-          </div>
-          <button type="button" class="add" data-target="checks" data-tpl="check-row-tpl">+ check</button>
-        </fieldset>
-      </details>
-
-      <button type="submit" class="primary">Lancer</button>
-    </form>
-  </section>
-
-  <section class="panel">
-    <h1>Historique</h1>
-    {{if .History}}
-    <ul class="history">
-      {{range .History}}
-      <li>
-        <a class="entry" href="/report?dir={{.Dir}}">
-          <span class="ts">{{.Name}}</span>
-          <span class="prompt">{{if .Prompt}}{{.Prompt}}{{else}}(prompt variable par config){{end}}</span>
-          <span class="meta">
-            {{.Count}} config(s){{if .Model}} · {{.Model}}{{end}}{{if gt .Runs 1}} · {{.Runs}} runs{{end}}{{if .HasEval}} · évaluation{{end}}
+      <div class="import-bar">
+        <label class="muted" for="importPath">Importer une config depuis un bench.yaml</label>
+        <div class="import-row">
+          <span class="path">
+            <input type="text" class="pathinput" data-pick="file" id="importPath" placeholder="./benches/freedy/bench.yaml">
+            <button type="button" class="pick" aria-label="Parcourir">📁</button>
           </span>
-          {{if .Configs}}<span class="configs">{{range $i, $c := .Configs}}{{if $i}}, {{end}}{{$c}}{{end}}</span>{{end}}
-        </a>
-      </li>
+          <button type="button" id="importBtn">Importer</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+        <form method="post" action="/run" class="bench-form">
+          <label>Prompt envoyé à Claude
+            <div class="prompt-field">
+              <div class="prompt-field-head">
+                <span class="glyph">✳</span>
+                <span class="who">Claude Code</span>
+                <span class="note">exécuté en sandbox</span>
+                <span class="spacer"></span>
+                <span class="note">la même consigne pour chaque config</span>
+              </div>
+              <textarea name="prompt" rows="3" placeholder="Ajoute un endpoint /health renvoyant 200.">{{.Form.Prompt}}</textarea>
+            </div>
+          </label>
+
+          <div class="field-group">
+            <div class="group-label">Cible &amp; exécution</div>
+            <div class="exec-row">
+              <label class="field-app">App (dossier de test)
+                <span class="path">
+                  <input type="text" class="pathinput" data-pick="dir" id="appInput" name="app" value="{{.Form.App}}" placeholder="./app-under-test" required>
+                  <button type="button" class="pick" aria-label="Parcourir">📁</button>
+                  <button type="button" class="view" aria-label="Consulter les fichiers">👁</button>
+                </span>
+              </label>
+              <label class="field-model">Modèle
+                <select name="model">
+                  {{$m := .Form.Model}}
+                  {{range .Models}}<option value="{{.}}" {{if eq . $m}}selected{{end}}>{{.}}</option>{{end}}
+                </select>
+              </label>
+              <label class="field-num">Runs
+                <span class="stepper">
+                  <button type="button" class="step" data-step="-1" aria-label="Moins de runs">−</button>
+                  <input type="number" name="runs" min="1" value="{{.Form.Runs}}">
+                  <button type="button" class="step" data-step="1" aria-label="Plus de runs">+</button>
+                </span>
+              </label>
+              <label class="field-num">Concurrence
+                <span class="stepper">
+                  <button type="button" class="step" data-step="-1" aria-label="Moins de concurrence">−</button>
+                  <input type="number" name="concurrency" min="1" value="{{.Form.Concurrency}}">
+                  <button type="button" class="step" data-step="1" aria-label="Plus de concurrence">+</button>
+                </span>
+              </label>
+              <label class="field-num" title="Relances d'un run sans effet (0 appel d'outil / diff vide) avant de l'écarter. 0 pour désactiver.">Relances
+                <span class="stepper">
+                  <button type="button" class="step" data-step="-1" aria-label="Moins de relances">−</button>
+                  <input type="number" name="retries" min="0" value="{{.Form.Retries}}">
+                  <button type="button" class="step" data-step="1" aria-label="Plus de relances">+</button>
+                </span>
+              </label>
+            </div>
+            <div class="app-tree" id="appTree" hidden>
+              <div class="app-tree-head">
+                <span class="label">échantillon · <span id="appTreeName"></span></span>
+                <span class="spacer"></span>
+                <span class="count" id="appTreeCount"></span>
+              </div>
+              <div class="app-tree-body" id="appTreeBody"></div>
+            </div>
+            <label class="switch-row">
+              <input type="checkbox" name="keepBaseConfig" class="switch" {{if .Form.KeepBaseConfig}}checked{{end}}>
+              Conserver la config de base de l'app (fusionne les CLAUDE.md au lieu de les remplacer)
+            </label>
+          </div>
+
+          <div class="field-group">
+            <div class="configs-head">
+              <div class="group-label">Configurations à comparer</div>
+              <button type="button" class="add" data-target="configs" data-tpl="config-row-tpl">+ config</button>
+            </div>
+            <div id="configs">
+              {{range .Form.Configs}}
+              <div class="row config-row">
+                <span class="idx"></span>
+                <input type="text" name="configName" aria-label="Nom de la config" value="{{.Name}}" placeholder="nom (baseline)">
+                <span class="path">
+                  <input type="text" class="pathinput" data-pick="dir" name="configBundle" aria-label="Bundle de la config" value="{{.Bundle}}" placeholder="bundle (./configs/baseline)">
+                  <button type="button" class="pick" aria-label="Parcourir">📁</button>
+                  <button type="button" class="view" aria-label="Consulter les fichiers">👁</button>
+                </span>
+                <select name="configModel" aria-label="Modèle de la config">
+                  <option value="" {{if not .Model}}selected{{end}}>défaut</option>
+                  {{$cm := .Model}}{{range $.Models}}<option value="{{.}}" {{if eq . $cm}}selected{{end}}>{{.}}</option>{{end}}
+                  {{if and .Model (not (has .Model $.Models))}}<option value="{{.Model}}" selected>{{.Model}}</option>{{end}}
+                </select>
+                <button type="button" class="remove" aria-label="retirer">×</button>
+                <div class="cfg-prompt">
+                  <span class="chips-label">prompt</span>
+                  <input type="text" name="configPrompt" aria-label="Prompt de la config" value="{{.Prompt}}" placeholder="(optionnel — sinon le prompt du banc)">
+                </div>
+                <div class="cfg-chips" data-bundle="{{.Bundle}}"><span class="chips-label">bundle</span></div>
+              </div>
+              {{end}}
+            </div>
+          </div>
+
+          <details class="advanced">
+            <summary>⚙ Évaluation &amp; options avancées</summary>
+            <div class="grid">
+              <label>Modèle juge
+                <input type="text" name="evalModel" value="{{.Form.EvalModel}}" placeholder="défaut : modèle du bench">
+              </label>
+              <label>Image du bac à sable
+                <input type="text" name="sandboxImage" value="{{.Form.SandboxImage}}" placeholder="claude-benchy:latest">
+              </label>
+              <label>Dossier de sortie
+                <span class="path">
+                  <input type="text" class="pathinput" data-pick="dir" name="output" value="{{.Form.Output}}" placeholder="results">
+                  <button type="button" class="pick" aria-label="Parcourir">📁</button>
+                </span>
+              </label>
+              <label>Creds OAuth (configDir)
+                <span class="path">
+                  <input type="text" class="pathinput" data-pick="dir" name="authConfigDir" value="{{.Form.AuthConfigDir}}" placeholder="~/.claude">
+                  <button type="button" class="pick" aria-label="Parcourir">📁</button>
+                </span>
+              </label>
+            </div>
+            <div class="rubric-block">
+              <label id="rubric-label">Rubric — un critère par ligne</label>
+              <div class="rubric-list" id="rubric-list" role="list" aria-labelledby="rubric-label"></div>
+              <div class="rubric-add">
+                <span class="plus">+</span>
+                <input type="text" id="rubric-new" placeholder="Ajouter un critère…" aria-label="Ajouter un critère">
+              </div>
+              <textarea name="rubric" id="rubric-field" hidden>{{.Form.Rubric}}</textarea>
+            </div>
+            <div class="checks-note">Checks déterministes rejoués dans le sandbox · commande (exit 0), existence de fichier…</div>
+            <div>
+              <div class="checks-head">
+                <div class="group-label">Checks déterministes</div>
+                <button type="button" class="add" data-target="checks" data-tpl="check-row-tpl">+ check</button>
+              </div>
+              <div id="checks">
+                {{range .Form.Checks}}
+                <div class="row check-row">
+                  <input type="text" name="checkName" aria-label="Nom du check" value="{{.Name}}" placeholder="nom">
+                  <input type="text" name="checkRun" aria-label="Commande du check (exit 0)" value="{{.Run}}" placeholder="commande (exit 0)">
+                  <input type="text" name="checkFile" aria-label="Fichier attendu du check" value="{{.File}}" placeholder="fichier attendu">
+                  <button type="button" class="remove" aria-label="retirer">×</button>
+                </div>
+                {{end}}
+              </div>
+            </div>
+          </details>
+
+          <button type="submit" class="primary">Lancer le bench <span>→</span></button>
+        </form>
+      </div>
+    </section>
+
+    <aside class="history-panel collapsed" id="history-panel">
+      <div class="head">
+        <h2>Historique</h2>
+        <span class="count">{{len .History}} bancs</span>
+        <span class="spacer"></span>
+        <button type="button" id="hist-toggle" class="hist-toggle" aria-label="Réduire l'historique" aria-expanded="false" title="Réduire">›</button>
+      </div>
+      {{if .History}}
+      <ul class="history">
+        {{range .History}}
+        <li class="hist-item">
+          <div class="top">
+            <span class="ts">{{.Name}}</span>
+            {{if .HasEval}}<span class="flag">éval</span>{{end}}
+            <span class="spacer"></span>
+            <a class="mini" href="/report?dir={{.Dir}}" title="Consulter le rapport">Consulter</a>
+            <form method="post" action="/history/delete" class="del-form" onsubmit="return confirm('Supprimer ce banc ({{.Name}}) et ses artefacts ? Action irréversible.');">
+              <input type="hidden" name="dir" value="{{.Dir}}">
+              <button type="submit" class="mini mini-danger" title="Supprimer ce banc" aria-label="Supprimer ce banc">🗑</button>
+            </form>
+          </div>
+          <a class="entry-link" href="/report?dir={{.Dir}}">
+            <span class="prompt">{{if .Prompt}}{{.Prompt}}{{else}}(prompt variable par config){{end}}</span>
+            <span class="meta">{{.Count}} config(s){{if .Model}} · {{.Model}}{{end}}{{if gt .Runs 1}} · {{.Runs}} runs{{end}}</span>
+          </a>
+        </li>
+        {{end}}
+      </ul>
+      <div class="hist-rail">
+        <button type="button" id="hist-expand" class="rail-btn" aria-label="Étendre l'historique" title="Étendre">☰</button>
+        {{range .History}}
+        <a class="rail-btn" href="/report?dir={{.Dir}}" title="{{.Name}}">🕘{{if .HasEval}}<span class="dot-eval"></span>{{end}}</a>
+        {{end}}
+      </div>
+      {{else}}
+      <p class="muted empty-history">Aucun bench trouvé sous la racine. Lancez-en un pour commencer.</p>
       {{end}}
-    </ul>
-    {{else}}
-    <p class="muted">Aucun bench trouvé sous la racine. Lancez-en un pour commencer.</p>
-    {{end}}
-  </section>
+    </aside>
+  </div>
 </main>
 
 <template id="config-row-tpl">
   <div class="row config-row">
-    <input type="text" name="configName" placeholder="nom (baseline)">
+    <span class="idx"></span>
+    <input type="text" name="configName" aria-label="Nom de la config" placeholder="nom (baseline)">
     <span class="path">
-      <input type="text" class="pathinput" data-pick="dir" name="configBundle" placeholder="bundle (./configs/baseline)">
+      <input type="text" class="pathinput" data-pick="dir" name="configBundle" aria-label="Bundle de la config" placeholder="bundle (./configs/baseline)">
       <button type="button" class="pick" aria-label="Parcourir">📁</button>
       <button type="button" class="view" aria-label="Consulter les fichiers">👁</button>
     </span>
-    <input type="text" name="configModel" placeholder="modèle (option)">
-    <input type="text" name="configPrompt" placeholder="prompt (option)">
+    <select name="configModel" aria-label="Modèle de la config">
+      <option value="" selected>défaut</option>
+      {{range .Models}}<option value="{{.}}">{{.}}</option>{{end}}
+    </select>
     <button type="button" class="remove" aria-label="retirer">×</button>
+    <div class="cfg-prompt">
+      <span class="chips-label">prompt</span>
+      <input type="text" name="configPrompt" aria-label="Prompt de la config" placeholder="(optionnel — sinon le prompt du banc)">
+    </div>
+    <div class="cfg-chips" data-bundle=""><span class="chips-label">bundle</span></div>
   </div>
 </template>
 <template id="check-row-tpl">
   <div class="row check-row">
-    <input type="text" name="checkName" placeholder="nom">
-    <input type="text" name="checkRun" placeholder="commande (exit 0)">
-    <input type="text" name="checkFile" placeholder="fichier attendu">
+    <input type="text" name="checkName" aria-label="Nom du check" placeholder="nom">
+    <input type="text" name="checkRun" aria-label="Commande du check (exit 0)" placeholder="commande (exit 0)">
+    <input type="text" name="checkFile" aria-label="Fichier attendu du check" placeholder="fichier attendu">
     <button type="button" class="remove" aria-label="retirer">×</button>
   </div>
 </template>
@@ -201,6 +300,7 @@
   </div>
 </dialog>
 
+<script src="/static/theme.js"></script>
 <script>
   var root = document.body.dataset.root;
 
@@ -209,7 +309,8 @@
     var add = e.target.closest('.add');
     if (add) {
       var tpl = document.getElementById(add.dataset.tpl);
-      document.getElementById(add.dataset.target).appendChild(tpl.content.cloneNode(true));
+      var frag = tpl.content.cloneNode(true);
+      document.getElementById(add.dataset.target).appendChild(frag);
       return;
     }
     var remove = e.target.closest('.remove');
@@ -220,8 +321,21 @@
         row.remove();
       } else {
         row.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+        var chips = row.querySelector('.cfg-chips');
+        if (chips) { renderChips(chips); }
       }
     }
+  });
+
+  // --- number stepper (Runs) -------------------------------------------------
+  document.addEventListener('click', function (e) {
+    var step = e.target.closest('.step');
+    if (!step) return;
+    var input = step.parentNode.querySelector('input[type=number]');
+    var min = input.min !== '' ? parseInt(input.min, 10) : -Infinity;
+    var val = parseInt(input.value || '0', 10) + parseInt(step.dataset.step, 10);
+    if (val < min) { val = min; }
+    input.value = val;
   });
 
   // --- path helpers ----------------------------------------------------------
@@ -236,6 +350,158 @@
     if (val.indexOf('./') === 0) val = val.slice(2);
     return root + '/' + val;
   }
+  // One-level directory listing including files (mode=file), for the previews.
+  function listDir(path) {
+    return fetch('/browse?mode=file&path=' + encodeURIComponent(path)).then(function (r) {
+      if (!r.ok) { throw new Error('browse'); }
+      return r.json();
+    });
+  }
+
+  // --- app tree preview ------------------------------------------------------
+  var appInput = document.getElementById('appInput');
+  var appTree = document.getElementById('appTree');
+  var appTreeBody = document.getElementById('appTreeBody');
+  var appTreeName = document.getElementById('appTreeName');
+  var appTreeCount = document.getElementById('appTreeCount');
+  var APP_TREE_MAX = 24;
+
+  function refreshAppTree() {
+    var val = appInput.value.trim();
+    if (!val) { appTree.hidden = true; return; }
+    listDir(absStart(val)).then(function (data) {
+      var entries = data.entries || []; // one level, directories first, then files
+      appTreeName.textContent = (data.path || val).split('/').filter(Boolean).pop() || val;
+      appTreeCount.textContent = entries.length + ' entrée' + (entries.length === 1 ? '' : 's');
+      appTreeBody.innerHTML = '';
+      entries.slice(0, APP_TREE_MAX).forEach(function (en) {
+        var d = document.createElement('div');
+        d.className = 'tree-node' + (en.dir ? ' dir' : '');
+        d.textContent = (en.dir ? '📁 ' : '📄 ') + en.name;
+        appTreeBody.appendChild(d);
+      });
+      var extra = entries.length - APP_TREE_MAX;
+      if (extra > 0) {
+        var more = document.createElement('div');
+        more.className = 'tree-more';
+        more.textContent = '… +' + extra + ' entrées';
+        appTreeBody.appendChild(more);
+      }
+      appTree.hidden = false;
+    }).catch(function () { appTree.hidden = true; });
+  }
+  var appTimer;
+  appInput.addEventListener('input', function () {
+    clearTimeout(appTimer);
+    appTimer = setTimeout(refreshAppTree, 350);
+  });
+  refreshAppTree();
+
+  // --- per-config bundle chips (the files the config overlays) ---------------
+  var CHIPS_MAX = 8;
+  function clearChips(box) { box.querySelectorAll('.chip, .chip-empty').forEach(function (n) { n.remove(); }); }
+  function addEmptyChip(box, text) {
+    var empty = document.createElement('span');
+    empty.className = 'chip-empty';
+    empty.textContent = text;
+    box.appendChild(empty);
+  }
+  function renderChips(box) {
+    var bundle = box.dataset.bundle || '';
+    clearChips(box);
+    if (!bundle.trim()) { addEmptyChip(box, '—'); return; }
+    listDir(absStart(bundle)).then(function (data) {
+      clearChips(box);
+      var entries = data.entries || []; // one level, directories first, then files
+      if (!entries.length) { addEmptyChip(box, '(vide)'); return; }
+      entries.slice(0, CHIPS_MAX).forEach(function (en) {
+        var chip = document.createElement('span');
+        chip.className = 'chip' + (en.dir ? ' dir' : '');
+        chip.textContent = (en.dir ? '📁 ' : '📄 ') + en.name;
+        box.appendChild(chip);
+      });
+      if (entries.length > CHIPS_MAX) {
+        var more = document.createElement('span');
+        more.className = 'chip';
+        more.textContent = '+' + (entries.length - CHIPS_MAX);
+        box.appendChild(more);
+      }
+    }).catch(function () {});
+  }
+  function bindConfigRow(row) {
+    var box = row.querySelector('.cfg-chips');
+    var bundleInput = row.querySelector('input[name=configBundle]');
+    if (!box || !bundleInput) return;
+    box.dataset.bundle = bundleInput.value;
+    renderChips(box);
+    var t;
+    bundleInput.addEventListener('input', function () {
+      clearTimeout(t);
+      t = setTimeout(function () { box.dataset.bundle = bundleInput.value; renderChips(box); }, 350);
+    });
+  }
+  document.querySelectorAll('#configs .config-row').forEach(bindConfigRow);
+  // Bind chips on rows added after load.
+  var configsBox = document.getElementById('configs');
+  new MutationObserver(function (muts) {
+    muts.forEach(function (m) {
+      m.addedNodes.forEach(function (n) {
+        if (n.nodeType === 1 && n.classList.contains('config-row')) { bindConfigRow(n); }
+      });
+    });
+  }).observe(configsBox, { childList: true });
+
+  // --- rubric rows (synced into the hidden textarea) -------------------------
+  var rubricList = document.getElementById('rubric-list');
+  var rubricNew = document.getElementById('rubric-new');
+  var rubricField = document.getElementById('rubric-field');
+  var rubric = (rubricField.value || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+
+  function syncRubric() { rubricField.value = rubric.join('\n'); }
+  function renderRubric() {
+    rubricList.innerHTML = '';
+    rubric.forEach(function (text, i) {
+      var row = document.createElement('div');
+      row.className = 'rubric-row';
+      row.setAttribute('role', 'listitem');
+      var n = document.createElement('span');
+      n.className = 'n';
+      n.textContent = i + 1;
+      var span = document.createElement('span');
+      span.className = 'txt';
+      span.textContent = text;
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'remove';
+      del.setAttribute('aria-label', 'Retirer le critère');
+      del.textContent = '×';
+      del.addEventListener('click', function () { rubric.splice(i, 1); renderRubric(); syncRubric(); });
+      row.appendChild(n); row.appendChild(span); row.appendChild(del);
+      rubricList.appendChild(row);
+    });
+  }
+  rubricNew.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    var v = rubricNew.value.trim();
+    if (!v) return;
+    rubric.push(v); rubricNew.value = ''; renderRubric(); syncRubric();
+  });
+  renderRubric();
+
+  // --- history collapse/expand ----------------------------------------------
+  var histPanel = document.getElementById('history-panel');
+  var layout = document.getElementById('layout');
+  function setHist(collapsed) {
+    histPanel.classList.toggle('collapsed', collapsed);
+    layout.classList.toggle('hist-collapsed', collapsed);
+    var toggle = document.getElementById('hist-toggle');
+    if (toggle) { toggle.setAttribute('aria-expanded', String(!collapsed)); }
+  }
+  var histToggle = document.getElementById('hist-toggle');
+  if (histToggle) { histToggle.addEventListener('click', function () { setHist(true); }); }
+  var histExpand = document.getElementById('hist-expand');
+  if (histExpand) { histExpand.addEventListener('click', function () { setHist(false); }); }
 
   // --- import an existing bench.yaml into the form --------------------------
   var importBtn = document.getElementById('importBtn');
@@ -272,14 +538,21 @@
     var li = document.createElement('li');
     li.className = isDir ? 'dir' : 'file';
     li.textContent = (isDir ? '📁 ' : '📄 ') + name;
-    li.addEventListener('click', function () {
-      if (isDir) { loadDir(abs); } else { choose(abs); }
+    li.tabIndex = 0;
+    li.setAttribute('role', 'button');
+    function activate() { if (isDir) { loadDir(abs); } else { choose(abs); } }
+    li.addEventListener('click', activate);
+    li.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
     });
     return li;
   }
 
   function choose(abs) {
-    if (pickTarget) { pickTarget.value = toRel(abs); }
+    if (pickTarget) {
+      pickTarget.value = toRel(abs);
+      pickTarget.dispatchEvent(new Event('input', { bubbles: true }));
+    }
     picker.close();
   }
 
@@ -320,11 +593,13 @@
       uri = uri.split('\n')[0].trim();
       if (uri.indexOf('file://') === 0) {
         input.value = toRel(decodeURIComponent(uri.replace(/^file:\/\/[^\/]*/, '')));
+        input.dispatchEvent(new Event('input', { bubbles: true }));
         return;
       }
     }
     if (e.dataTransfer.files && e.dataTransfer.files.length) {
       input.value = e.dataTransfer.files[0].name; // name only: no path exposed
+      input.dispatchEvent(new Event('input', { bubbles: true }));
     }
   });
 
@@ -352,8 +627,12 @@
     var li = document.createElement('li');
     li.className = isDir ? 'dir' : 'file';
     li.textContent = (isDir ? '📁 ' : '📄 ') + name;
-    li.addEventListener('click', function () {
-      if (isDir) { viewerLoad(abs); } else { viewFile(abs); }
+    li.tabIndex = 0;
+    li.setAttribute('role', 'button');
+    function activate() { if (isDir) { viewerLoad(abs); } else { viewFile(abs); } }
+    li.addEventListener('click', activate);
+    li.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
     });
     return li;
   }

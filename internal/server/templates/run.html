@@ -4,48 +4,65 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>benchy · run #{{.ID}}</title>
+  <script>{{themeInitJS}}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <header class="topbar">
-  <span class="brand"><a href="/">benchy</a></span>
+  <a class="brand" href="/"><span class="logo">b</span><span class="name">benchy</span></a>
   <span class="root">run #{{.ID}}</span>
+  <span class="spacer"></span>
+  <nav class="nav-seg" aria-label="Sections">
+    <a class="seg" href="/">Dashboard</a>
+    <span class="seg active" aria-current="page">Run live</span>
+    <a class="seg" href="/report?dir={{.ReportDir}}">Rapport</a>
+  </nav>
+  <button type="button" id="theme-toggle" class="theme-toggle" title="Basculer le thème">☀</button>
 </header>
 
-<main class="layout single">
-  <section class="panel">
-    <div class="run-head">
-      <h1>Run #{{.ID}}</h1>
-      <span id="status" class="badge {{.Status}}">{{.Status}}</span>
-      <form id="stop-form" method="post" action="/runs/{{.ID}}/stop">
-        <button type="submit" class="danger">Arrêter</button>
-      </form>
+<main class="page">
+  <div class="run-head">
+    <h1>Run #{{.ID}}</h1>
+    <span id="status" role="status" class="badge {{.Status}}">{{if eq .Status "running"}}<span class="pip"></span>{{end}}{{.Status}}</span>
+    <span class="spacer"></span>
+    <form id="stop-form" method="post" action="/runs/{{.ID}}/stop">
+      <button type="submit" class="danger">■ Arrêter</button>
+    </form>
+  </div>
+  <p class="run-sub">progression en direct · orchestration &amp; agents</p>
+
+  <div class="terminal">
+    <div class="terminal-head">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="title">orchestration</span>
     </div>
-
     <pre id="log" class="console" aria-live="polite"></pre>
-    <noscript>
-      <p class="muted">JavaScript désactivé — progression non diffusée. Rechargez la page.</p>
-      <pre class="console">{{range .Logs}}{{.}}
-{{end}}</pre>
-    </noscript>
+    <div class="term-cursor" id="log-cursor">▍<span class="blink">_</span></div>
+  </div>
+  <noscript>
+    <p class="muted">JavaScript désactivé — progression non diffusée. Rechargez la page.</p>
+    <div class="terminal"><pre class="console">{{range .Logs}}{{.}}
+{{end}}</pre></div>
+  </noscript>
 
-    <p><a id="report-link" class="primary button" href="/report?dir={{.ReportDir}}" hidden>Voir le rapport</a>
-       <a class="button" href="/">← Retour</a></p>
-  </section>
+  <div class="actions">
+    <a id="report-link" class="button primary" href="/report?dir={{.ReportDir}}" hidden>Voir le rapport →</a>
+    <a class="button" href="/">← Retour</a>
+  </div>
 
-  <section class="panel" id="agents-panel" hidden>
-    <h2 class="panel-sub">Agents · sortie en direct</h2>
-    <div class="carousel-nav">
-      <button type="button" id="agents-prev" aria-label="Précédent">←</button>
-      <button type="button" id="agents-next" aria-label="Suivant">→</button>
+  <section id="agents-panel" hidden>
+    <div class="agents-head">
+      <h2>Agents · sortie en direct</h2>
+      <span class="note">config × run</span>
     </div>
     <div id="agents" class="agents"></div>
   </section>
 </main>
 
+<script src="/static/theme.js"></script>
 <script>
   var id = {{.ID}};
   var reportDir = {{.ReportDir}};
@@ -55,20 +72,17 @@
   var agentsBox = document.getElementById('agents');
   var agents = {};
 
-  // Horizontal carousel: at most ~3 cards show at once; the rest scroll in.
-  var prevBtn = document.getElementById('agents-prev');
-  var nextBtn = document.getElementById('agents-next');
-  function updateNav() {
-    var max = agentsBox.scrollWidth - agentsBox.clientWidth - 1;
-    prevBtn.disabled = agentsBox.scrollLeft <= 0;
-    nextBtn.disabled = agentsBox.scrollLeft >= max;
+  function macDots() {
+    var wrap = document.createElement('span');
+    wrap.style.display = 'inline-flex';
+    wrap.style.gap = '5px';
+    ['r', 'y', 'g'].forEach(function (c) {
+      var d = document.createElement('span');
+      d.className = 'dot ' + c;
+      wrap.appendChild(d);
+    });
+    return wrap;
   }
-  function scrollAgents(dir) {
-    agentsBox.scrollBy({ left: dir * agentsBox.clientWidth * 0.9, behavior: 'smooth' });
-  }
-  prevBtn.addEventListener('click', function () { scrollAgents(-1); });
-  nextBtn.addEventListener('click', function () { scrollAgents(1); });
-  agentsBox.addEventListener('scroll', updateNav);
 
   function agentPanel(key) {
     if (agents[key]) { return agents[key]; }
@@ -88,16 +102,20 @@
     link.target = '_blank';
     link.href = '/transcript?dir=' + encodeURIComponent(reportDir + '/' + key);
     link.textContent = 'transcript ↗';
+    head.appendChild(macDots());
     head.appendChild(name);
     head.appendChild(badge);
     head.appendChild(link);
     var pre = document.createElement('pre');
     pre.className = 'console agent-log';
+    var cursor = document.createElement('div');
+    cursor.className = 'term-cursor';
+    cursor.innerHTML = '▍<span class="blink">_</span>';
     wrap.appendChild(head);
     wrap.appendChild(pre);
+    wrap.appendChild(cursor);
     agentsBox.appendChild(wrap);
-    agents[key] = { pre: pre, badge: badge };
-    updateNav();
+    agents[key] = { pre: pre, badge: badge, cursor: cursor };
     return agents[key];
   }
 
@@ -118,6 +136,7 @@
     if (ev.status) {
       p.badge.textContent = ev.status;
       p.badge.className = 'badge ' + ev.status;
+      p.cursor.hidden = true;
     }
   });
 
@@ -126,6 +145,8 @@
     var state = e.data.split(':')[0];
     status.textContent = e.data;
     status.className = 'badge ' + state;
+    var cursor = document.getElementById('log-cursor');
+    if (cursor) { cursor.hidden = true; }
     var stop = document.getElementById('stop-form');
     if (stop) { stop.hidden = true; }
     document.getElementById('report-link').hidden = false;

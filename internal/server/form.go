@@ -13,7 +13,6 @@ import (
 // and the model used to repopulate the form when validation fails.
 type formValues struct {
 	Prompt         string
-	PromptFile     string
 	App            string
 	Model          string
 	Runs           string
@@ -51,7 +50,6 @@ func readForm(r *http.Request) formValues {
 	_ = r.ParseForm()
 	fv := formValues{
 		Prompt:         r.FormValue("prompt"),
-		PromptFile:     r.FormValue("promptFile"),
 		App:            r.FormValue("app"),
 		Model:          r.FormValue("model"),
 		Runs:           r.FormValue("runs"),
@@ -105,7 +103,6 @@ func (fv formValues) spec() (spec.Spec, error) {
 
 	s := spec.Spec{
 		Prompt:         blankToEmpty(fv.Prompt),
-		PromptFile:     strings.TrimSpace(fv.PromptFile),
 		App:            strings.TrimSpace(fv.App),
 		Model:          strings.TrimSpace(fv.Model),
 		Runs:           runs,
@@ -148,7 +145,6 @@ func (fv formValues) spec() (spec.Spec, error) {
 // stays tidy — it is the serialization boundary, kept separate from spec.Spec.
 type benchDoc struct {
 	Prompt         string       `yaml:"prompt,omitempty"`
-	PromptFile     string       `yaml:"promptFile,omitempty"`
 	App            string       `yaml:"app"`
 	Model          string       `yaml:"model,omitempty"`
 	Runs           int          `yaml:"runs,omitempty"`
@@ -193,7 +189,6 @@ type configDoc struct {
 func benchDocFrom(s spec.Spec) benchDoc {
 	d := benchDoc{
 		Prompt:         s.Prompt,
-		PromptFile:     s.PromptFile,
 		App:            s.App,
 		Model:          s.Model,
 		Runs:           s.Runs,

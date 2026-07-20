@@ -39,8 +39,14 @@ par défaut). **Localhost par défaut** : ne pas exposer au réseau (voir
   réel la sortie de son Claude — texte, appels d'outils, résultats — rendue depuis
   le flux stream-json. Chaque panneau porte un lien « transcript ↗ » qui rejoue le
   feed depuis `transcript.jsonl` (route `/transcript`), consultable après le run.
-- **Historique** : la liste de tous les bancs générés sous la racine, chacun
-  ouvrant son rapport HTML re-rendu à la volée.
+- **Historique** : la liste de tous les bancs générés sous la racine (repliable
+  en rail d'icônes), chacun ouvrant son rapport HTML re-rendu à la volée, avec
+  un bouton **Consulter** et un bouton **Supprimer** qui efface le dossier de
+  résultats du banc (irréversible, confiné à la racine scannée).
+- **Thème clair/sombre** : le bouton de la barre supérieure bascule entre les
+  thèmes ; au premier affichage, l'interface suit le thème du système
+  (`prefers-color-scheme`), puis le choix est mémorisé (`localStorage`). Le
+  rapport HTML partage le même comportement.
 
 L'image du banc l'emporte sur l'image par défaut du serveur. Le `bench.yaml`
 soumis est persisté dans le dossier de résultats.
@@ -56,6 +62,9 @@ soumis est persisté dans le dossier de résultats.
   formulaire est réaffiché avec les valeurs saisies et le message d'erreur.
 - **Given** un `dir` avec `..`, **When** on demande `/report` ou `/transcript`,
   **Then** la requête est rejetée (400).
+- **Given** un banc de l'historique, **When** on le supprime, **Then** son
+  dossier de résultats est effacé (303 vers `/`) ; un `dir` sans `bench.json`
+  est rejeté (400).
 
 ## Cas non triviaux & limites
 
@@ -63,15 +72,15 @@ soumis est persisté dans le dossier de résultats.
   listables via l'historique et les transcripts rejouables.
 - Les lignes de config/check du formulaire vides sont ignorées ; `retries` est
   tri-état (blanc → défaut, `0`/`N` préservés).
-- Les templates et le CSS sont embarqués (`go:embed`) : modifier l'UI exige un
-  rebuild (`make serve-watch` pour le développement).
+- Les templates, le CSS et le JS (thème) sont embarqués (`go:embed`) : modifier
+  l'UI exige un rebuild (`make serve-watch` pour le développement).
 
 ## Cas de test associés
 
 `internal/server/server_test.go` : `TestDashboardRenders`,
 `TestRunLaunchesJobAndStreamsToCompletion`,
 `TestRunRerendersFormOnValidationError`, `TestTranscriptRejectsPathTraversal`,
-`TestReportRejectsPathTraversal`.
+`TestReportRejectsPathTraversal`, `TestDeleteHistoryRemovesRunAndRejectsBadDir`.
 `internal/server/form_test.go` : `TestFormSpecDropsBlankRowsAndParsesLists`,
 `TestFormRetriesRoundTrip`, `TestFormSpecRejectsInvalidNumber`,
 `TestChooseImagePrefersBenchImage`, `TestBenchDocMarshalsTidyYAML`.

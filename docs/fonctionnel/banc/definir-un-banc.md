@@ -22,7 +22,7 @@ commande.
 ## Le format du fichier de banc
 
 ```yaml
-prompt: |                      # ou promptFile: ./prompts/x.md
+prompt: |                      # la consigne, en clair
   Ajoute un endpoint /health renvoyant 200.
 app: ./app-under-test          # dossier de l'app de test (git non requis)
 model: sonnet                  # défaut, surchargeable par config
@@ -78,8 +78,6 @@ Un `--image` explicite l'emporte sur `sandbox.image` ; à défaut, `sandbox.imag
   est rejeté.
 - **Given** une config sans prompt propre, **When** on la charge, **Then** elle
   hérite du prompt de tête ; une config avec `model` propre l'emporte.
-- **Given** `prompt` et `promptFile` tous deux fournis, **When** on charge, **Then**
-  l'erreur « mutuellement exclusifs » est levée.
 
 Voir les règles [RG-banc-01 à RG-banc-04](../../domaine/banc/index.md#règles).
 
@@ -95,5 +93,5 @@ Voir les règles [RG-banc-01 à RG-banc-04](../../domaine/banc/index.md#règles)
 ## Cas de test associés
 
 `internal/spec/spec_test.go` : `TestLoadDefaultsAndOverrides`, `TestLoadRetries`,
-`TestLoadPromptFile`, `TestLoadErrors`, `TestLoadEvaluate`,
+`TestLoadErrors`, `TestLoadEvaluate`,
 `TestLoadEvaluateInvalidCheck`, `TestLoadMissingBundle`.

@@ -145,7 +145,7 @@ func TestBenchDocMarshalsTidyYAML(t *testing.T) {
 	}
 	got := string(out)
 	// omitempty keeps the persisted bench readable: no empty auth/sandbox/evaluate.
-	for _, unwanted := range []string{"auth:", "sandbox:", "evaluate:", "promptFile:"} {
+	for _, unwanted := range []string{"auth:", "sandbox:", "evaluate:"} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("bench.yaml should omit empty %q, got:\n%s", unwanted, got)
 		}

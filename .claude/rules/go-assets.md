@@ -45,5 +45,8 @@ fonction de template), au lieu d'écrire le CSS en dur dans `htmlSource`.
 - Vise le CSS/JS/HTML **statique** (mise en forme, structure fixe). Le HTML
   **dynamique** piloté par les données reste un `text/template`/`html/template`
   idiomatique — ce n'est pas visé.
-- Les fichiers `.css` embarqués suivent le design system Gazoline déjà en place
-  (cf. l'en-tête de `internal/report/static/report.css`).
+- Les fichiers `.css` embarqués suivent le design system Benchy déjà en place —
+  sombre par défaut avec bascule clair, accent jaune `#f5b301`, polices Space
+  Grotesk / Inter / JetBrains Mono (cf. l'en-tête de
+  `internal/report/static/report.css`, partagé avec `internal/server/static
+  /style.css`).

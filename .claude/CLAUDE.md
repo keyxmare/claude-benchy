@@ -76,9 +76,9 @@ projet, c'est suivre le chemin d'un banc à travers ces packages :
   déterministes rejoués dans le sandbox) ; `reload.go` reconstruit le rapport
   depuis les artefacts sans re-payer d'appel API.
 - **`internal/report`** — agrège les résultats par run en `report.md` +
-  `report.html` (design system **Gazoline** de Motoblouz), avec agrégation par
-  config (score moyen + dispersion) et comparaison côte à côte fichier par
-  fichier.
+  `report.html` (design system **Benchy** : sombre par défaut avec bascule
+  clair, partagé avec le dashboard), avec agrégation par config (score moyen +
+  dispersion) et comparaison côte à côte fichier par fichier.
 - **`internal/server`** — dashboard web (sans framework web ; bibliothèque
   standard + `yaml.v3`, l'unique dépendance de production du projet — `go-cmp`
   ne sert qu'aux tests — pour lire/écrire le `bench.yaml` du formulaire) :

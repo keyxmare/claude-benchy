@@ -9,8 +9,8 @@
 - **RG-banc-01** — Un banc est invalide sans `app` (dossier existant), sans au
   moins une config, ou avec une config sans nom unique / sans bundle existant /
   sans prompt résoluble.
-- **RG-banc-02** — `prompt` et `promptFile` sont mutuellement exclusifs à tout
-  niveau ; une config sans prompt hérite du prompt de tête.
+- **RG-banc-02** — Le prompt est donné en clair (`prompt`) ; une config sans
+  prompt hérite du prompt de tête.
 - **RG-banc-03** — `retries` : non renseigné → défaut 2 ; `0` explicite →
   désactivé ; négatif → invalide.
 - **RG-banc-04** — Un champ YAML inconnu rend le banc invalide.

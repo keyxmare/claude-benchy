@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -34,7 +35,19 @@ var templatesFS embed.FS
 //go:embed static/*
 var staticFS embed.FS
 
-var tmpl = template.Must(template.ParseFS(templatesFS, "templates/*.html"))
+// themeInitJS is the pre-paint snippet applying the persisted theme before the
+// stylesheet loads; it is inlined into each page <head> so a saved dark/light
+// choice never flashes the OS default.
+//
+//go:embed static/theme-init.js
+var themeInitJS string
+
+var tmpl = template.Must(template.New("").
+	Funcs(template.FuncMap{
+		"themeInitJS": func() template.JS { return template.JS(themeInitJS) },
+		"has":         func(needle string, hay []string) bool { return slices.Contains(hay, needle) },
+	}).
+	ParseFS(templatesFS, "templates/*.html"))
 
 // Server serves the dashboard over HTTP.
 type Server struct {
@@ -67,6 +80,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /runs/{id}/events", s.handleEvents)
 	mux.HandleFunc("POST /runs/{id}/stop", s.handleStop)
 	mux.HandleFunc("GET /report", s.handleReport)
+	mux.HandleFunc("POST /history/delete", s.handleDeleteHistory)
 	mux.HandleFunc("GET /transcript", s.handleTranscript)
 	mux.HandleFunc("GET /browse", s.handleBrowse)
 	mux.HandleFunc("GET /file", s.handleFile)
@@ -159,8 +173,8 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 		s.renderDashboard(w, form, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// Marshal the bench before Build resolves paths to absolute (and inlines
-	// promptFile contents into each config), so the persisted bench.yaml stays
+	// Marshal the bench before Build resolves paths to absolute and fills each
+	// config's prompt from the top-level one, so the persisted bench.yaml stays
 	// readable and re-runnable.
 	raw, err := yaml.Marshal(benchDocFrom(sp))
 	if err != nil {
@@ -296,6 +310,23 @@ func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) {
 	if err := report.WriteHTML(w, rep); err != nil {
 		fmt.Fprintf(os.Stderr, "render report: %v\n", err)
 	}
+}
+
+// handleDeleteHistory removes a past benchmark's output directory and its
+// artifacts. safeDir confines the target to the scanned root and requires it to
+// look like a benchmark output (a bench.json), so the destructive removal can
+// only hit a genuine run directory.
+func (s *Server) handleDeleteHistory(w http.ResponseWriter, r *http.Request) {
+	dir, err := s.safeDir(r.FormValue("dir"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // transcriptData is the model for a single agent's replayed transcript page.

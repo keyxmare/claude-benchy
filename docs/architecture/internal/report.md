@@ -24,7 +24,7 @@ sources:
   niveau d'un critère, construit par `NormalizeLevel`, qui porte son poids de
   score, sa classe CSS et son glyphe) et `Rank` (le rang d'efficacité
   best/mid/worst d'une config sur un axe, rendu via le visuel de `Level`).
-- Le rapport HTML est autoportant (design **Gazoline** de Motoblouz, CSS inline).
+- Le rapport HTML est autoportant (design **Benchy** sombre/clair, CSS inline).
 
 ## Flux principaux
 

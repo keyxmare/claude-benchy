@@ -321,3 +321,39 @@ func TestReportRejectsPathTraversal(t *testing.T) {
 		t.Fatalf("status = %d, want 400 for an out-of-root dir", rec.Code)
 	}
 }
+
+func TestDeleteHistoryRemovesRunAndRejectsBadDir(t *testing.T) {
+	srv, root := newTestServer(t)
+	runDir := filepath.Join(root, "results", "20260101-000000")
+	if err := os.MkdirAll(runDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(runDir, "bench.json"), []byte(`{"prompt":"do it"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("removes a genuine run directory", func(t *testing.T) {
+		form := strings.NewReader("dir=" + url.QueryEscape("results/20260101-000000"))
+		req := httptest.NewRequest(http.MethodPost, "/history/delete", form)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusSeeOther {
+			t.Fatalf("status = %d, want 303", rec.Code)
+		}
+		if _, err := os.Stat(runDir); !os.IsNotExist(err) {
+			t.Errorf("run directory should be removed, stat err = %v", err)
+		}
+	})
+
+	t.Run("rejects a dir without a bench.json", func(t *testing.T) {
+		form := strings.NewReader("dir=" + url.QueryEscape("results"))
+		req := httptest.NewRequest(http.MethodPost, "/history/delete", form)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d, want 400 for a non-bench dir", rec.Code)
+		}
+	})
+}

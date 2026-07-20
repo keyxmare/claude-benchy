@@ -11,12 +11,12 @@ import (
 )
 
 // Import reads the bench.yaml at path and returns it with every relative path
-// (app, output, promptFile, auth.configDir, each config's bundle and
-// promptFile) rewritten to an absolute path against the file's own directory,
-// so the imported bench points at the same folders wherever it is later saved
-// or run from. Everything else — comments, field order, values — is preserved:
-// it neither applies defaults nor validates, so the result stays a faithful,
-// editable starting point for a new bench.
+// (app, output, auth.configDir, each config's bundle) rewritten to an absolute
+// path against the file's own directory, so the imported bench points at the
+// same folders wherever it is later saved or run from. Everything else —
+// comments, field order, values — is preserved: it neither applies defaults nor
+// validates, so the result stays a faithful, editable starting point for a new
+// bench.
 func Import(path string) ([]byte, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -34,12 +34,10 @@ func Import(path string) ([]byte, error) {
 	base := filepath.Dir(path)
 	absolutizeScalar(mapValue(doc, "app"), base)
 	absolutizeScalar(mapValue(doc, "output"), base)
-	absolutizeScalar(mapValue(doc, "promptFile"), base)
 	absolutizeScalar(mapValue(mapValue(doc, "auth"), "configDir"), base)
 	if configs := mapValue(doc, "configs"); configs != nil && configs.Kind == yaml.SequenceNode {
 		for _, c := range configs.Content {
 			absolutizeScalar(mapValue(c, "bundle"), base)
-			absolutizeScalar(mapValue(c, "promptFile"), base)
 		}
 	}
 

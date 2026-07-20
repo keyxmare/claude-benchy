@@ -4,31 +4,38 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>benchy · transcript {{.Agent}}</title>
+  <script>{{themeInitJS}}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <header class="topbar">
-  <span class="brand"><a href="/">benchy</a></span>
+  <a class="brand" href="/"><span class="logo">b</span><span class="name">benchy</span></a>
   <span class="root">transcript · {{.Agent}}</span>
+  <span class="spacer"></span>
+  <button type="button" id="theme-toggle" class="theme-toggle" title="Basculer le thème">☀</button>
 </header>
 
-<main class="layout single">
-  <section class="panel">
-    <div class="run-head">
-      <h1>Transcript</h1>
-      <span class="badge done">{{.Agent}}</span>
+<main class="page">
+  <div class="run-head"><h1>Transcript</h1></div>
+  <p class="run-sub">{{.Agent}}</p>
+  {{if .Lines}}
+  <div class="terminal">
+    <div class="terminal-head">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="title">transcript</span>
     </div>
-    {{if .Lines}}
     <pre class="console">{{range .Lines}}{{.}}
 {{end}}</pre>
-    {{else}}
-    <p class="muted">Transcript vide ou illisible.</p>
-    {{end}}
-    <p><a class="button" href="javascript:history.back()">← Retour</a></p>
-  </section>
+  </div>
+  {{else}}
+  <p class="muted">Transcript vide ou illisible.</p>
+  {{end}}
+  <div class="actions"><button type="button" class="button" onclick="history.back()">← Retour</button></div>
 </main>
+
+<script src="/static/theme.js"></script>
 </body>
 </html>

@@ -51,9 +51,9 @@ Valeurs par défaut appliquées par `resolve` :
 | `auth.configDir` | `$CLAUDE_CONFIG_DIR`, sinon `~/.claude` |
 | `evaluate.model` | le `model` du banc |
 
-Résolution des chemins : `app`, `output`, `promptFile` sont absolutisés contre
-`baseDir` ; pour chaque config, `bundle` et `promptFile` aussi. Un chemin déjà
-absolu ou vide est laissé tel quel ; `~` est étendu via le home de l'utilisateur.
+Résolution des chemins : `app` et `output` sont absolutisés contre `baseDir` ;
+pour chaque config, `bundle` aussi. Un chemin déjà absolu ou vide est laissé tel
+quel ; `~` est étendu via le home de l'utilisateur.
 
 Le prompt d'une config vide **hérite** du prompt de tête ; le `model` d'une config
 vide hérite du `model` du banc.
@@ -71,7 +71,8 @@ macOS.
   existant, au moins une config, chaque config avec un nom unique non vide dont le
   `bundle` existe et avec un prompt résoluble. Voir
   [RG-banc-01…](../../domaine/banc/index.md).
-- **`prompt` et `promptFile` sont mutuellement exclusifs** à tout niveau.
+- **Le prompt est toujours en clair** (`prompt`) : une config sans prompt hérite
+  du prompt de tête.
 - **`retries` en `*int`** : nil → défaut 2 ; `0` explicite → désactivé ; négatif →
   invalide. Le pointeur distingue « non renseigné » de « 0 explicite ».
 - **Champs YAML inconnus rejetés** (`KnownFields(true)`) : échec immédiat sur une
@@ -86,7 +87,7 @@ macOS.
 ## Cas de test associés
 
 `spec_test.go` : `TestLoadDefaultsAndOverrides`, `TestLoadRetries`,
-`TestLoadPromptFile`, `TestLoadErrors`, `TestLoadEvaluate`,
+`TestLoadErrors`, `TestLoadEvaluate`,
 `TestLoadEvaluateInvalidCheck`, `TestLoadMissingBundle`.
 `import_test.go` : `TestImportAbsolutizesRelativePaths`,
 `TestImportPreservesComments`,

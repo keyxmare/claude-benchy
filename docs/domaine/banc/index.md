@@ -16,8 +16,7 @@
 - **Bundle** — un dossier superposé tel quel sur la copie de l'app : c'est ce
   qu'on teste au niveau projet (`CLAUDE.md`, `.claude/rules/*`,
   `.claude/skills/*`…).
-- **Prompt** — la tâche confiée à Claude, en clair (`prompt`) ou dans un fichier
-  (`promptFile`).
+- **Prompt** — la tâche confiée à Claude, en clair (`prompt`).
 - **Modèle (`model`)** — le modèle Claude utilisé (défaut `sonnet`),
   surchargeable par config.
 - **`keepBaseConfig`** — bascule décidant si le `CLAUDE.md` du bundle **remplace**
@@ -34,10 +33,9 @@
   sans bundle existant, ou sans prompt résoluble.
   Source : `internal/spec/spec.go` (`validate`). Tests :
   `TestLoadErrors`, `TestLoadMissingBundle` (`internal/spec/spec_test.go`).
-- **RG-banc-02 — Prompt exclusif et hérité.** `prompt` et `promptFile` sont
-  mutuellement exclusifs à tout niveau ; une config sans prompt hérite du prompt
-  de tête. Source : `internal/spec/spec.go` (`resolvedPrompt`, `resolve`). Tests :
-  `TestLoadPromptFile`, `TestLoadErrors`, `TestLoadDefaultsAndOverrides`.
+- **RG-banc-02 — Prompt hérité.** Le prompt est donné en clair (`prompt`) ; une
+  config sans prompt hérite du prompt de tête. Source : `internal/spec/spec.go`
+  (`resolve`). Tests : `TestLoadErrors`, `TestLoadDefaultsAndOverrides`.
 - **RG-banc-03 — Sémantique de `retries`.** Non renseigné → défaut 2 ; `0`
   explicite → désactivé ; négatif → invalide. Source : `internal/spec/spec.go`
   (`RetryCount`, `validate`). Tests : `TestLoadRetries`, `TestLoadErrors`.

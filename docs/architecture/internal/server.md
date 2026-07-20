@@ -23,9 +23,10 @@ sources:
 
 Aucune dépendance runtime hors bibliothèque standard (seul `gopkg.in/yaml.v3` est
 importé). Réutilise `runner.Run`, `runner.Reload`, `report.Write`. Les templates
-(`templates/*.html`) et les assets (`static/style.css`) sont embarqués via
-`//go:embed`. Posture **localhost par défaut** : les pickers listent librement le
-système de fichiers de l'hôte et le sandbox monte les creds — voir
+(`templates/*.html`) et les assets (`static/style.css`, `static/theme.js`) sont
+embarqués via `//go:embed`. Posture **localhost par défaut** : les pickers
+listent librement le système de fichiers de l'hôte et le sandbox monte les
+creds — voir
 [ADR-0008](../decisions/0008-dashboard-stdlib-localhost.md).
 
 ## Flux principaux
@@ -41,6 +42,7 @@ Routes (mux `net/http` méthode+motif, Go 1.22) :
 | `GET /runs/{id}/events` | Flux SSE des événements `log`/`agent`/`done`. |
 | `POST /runs/{id}/stop` | Annule le contexte du job. |
 | `GET /report` | Recharge et rend le rapport HTML d'un run (`?dir=`). |
+| `POST /history/delete` | Supprime le dossier de résultats d'un banc (`dir=`) → 303 vers `/`. |
 | `GET /transcript` | Rejoue le `transcript.jsonl` d'un agent en feed rendu (`?dir=`). |
 | `POST /apply` | `git apply` du `diff.patch` d'un run sur l'app (non committé). |
 | `GET /config-files` | Liste JSON des fichiers du bundle d'un run. |

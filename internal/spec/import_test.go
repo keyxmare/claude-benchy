@@ -12,17 +12,15 @@ import (
 )
 
 type importedConfig struct {
-	Bundle     string `yaml:"bundle"`
-	PromptFile string `yaml:"promptFile"`
+	Bundle string `yaml:"bundle"`
 }
 
 // importedPaths is the subset of a re-emitted bench.yaml the import tests
 // assert on.
 type importedPaths struct {
-	App        string `yaml:"app"`
-	Output     string `yaml:"output"`
-	PromptFile string `yaml:"promptFile"`
-	Auth       struct {
+	App    string `yaml:"app"`
+	Output string `yaml:"output"`
+	Auth   struct {
 		ConfigDir string `yaml:"configDir"`
 	} `yaml:"auth"`
 	Configs []importedConfig `yaml:"configs"`
@@ -44,7 +42,6 @@ func TestImportAbsolutizesRelativePaths(t *testing.T) {
 prompt: do it
 app: ./app-under-test
 output: ./results
-promptFile: ./prompts/x.md
 auth:
   configDir: ~/.claude
 configs:
@@ -52,7 +49,6 @@ configs:
     bundle: ./configs/baseline
   - name: strict
     bundle: /abs/configs/strict
-    promptFile: ./p.md
 `)
 	base := filepath.Dir(path)
 
@@ -66,12 +62,11 @@ configs:
 		t.Fatalf("unmarshal output: %v", err)
 	}
 	want := importedPaths{
-		App:        filepath.Join(base, "app-under-test"),
-		Output:     filepath.Join(base, "results"),
-		PromptFile: filepath.Join(base, "prompts/x.md"),
+		App:    filepath.Join(base, "app-under-test"),
+		Output: filepath.Join(base, "results"),
 		Configs: []importedConfig{
 			{Bundle: filepath.Join(base, "configs/baseline")},
-			{Bundle: "/abs/configs/strict", PromptFile: filepath.Join(base, "p.md")},
+			{Bundle: "/abs/configs/strict"},
 		},
 	}
 	want.Auth.ConfigDir = "~/.claude"

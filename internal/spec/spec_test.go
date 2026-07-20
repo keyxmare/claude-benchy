@@ -90,26 +90,6 @@ configs:
 	}
 }
 
-func TestLoadPromptFile(t *testing.T) {
-	path := writeSpec(t, `
-promptFile: ./prompt.txt
-app: ./app
-configs:
-  - name: a
-    bundle: ./cfg-a
-`)
-	if err := os.WriteFile(filepath.Join(filepath.Dir(path), "prompt.txt"), []byte("from file"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	s, err := spec.Load(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if s.Configs[0].Prompt != "from file" {
-		t.Errorf("promptFile not read: %q", s.Configs[0].Prompt)
-	}
-}
-
 func TestLoadErrors(t *testing.T) {
 	cases := map[string]string{
 		"no prompt": `
@@ -126,14 +106,6 @@ configs:
     bundle: ./cfg-a
   - name: a
     bundle: ./cfg-b
-`,
-		"prompt and file": `
-prompt: p
-promptFile: ./x.txt
-app: ./app
-configs:
-  - name: a
-    bundle: ./cfg-a
 `,
 		"no configs": `
 prompt: p
@@ -207,13 +179,13 @@ app: ./app
 configs:
   - bundle: ./cfg-a
 `,
-		"config promptFile missing": `
+		"unknown config field": `
 prompt: p
 app: ./app
 configs:
   - name: a
     bundle: ./cfg-a
-    promptFile: ./missing.txt
+    promptFile: ./x.txt
 `,
 	}
 	for name, body := range cases {

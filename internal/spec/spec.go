@@ -34,11 +34,10 @@ type Sandbox struct {
 
 // Config is a single Claude configuration to benchmark.
 type Config struct {
-	Name       string `yaml:"name"`
-	Bundle     string `yaml:"bundle"`
-	Model      string `yaml:"model"`
-	Prompt     string `yaml:"prompt"`
-	PromptFile string `yaml:"promptFile"`
+	Name   string `yaml:"name"`
+	Bundle string `yaml:"bundle"`
+	Model  string `yaml:"model"`
+	Prompt string `yaml:"prompt"`
 }
 
 // Check is a deterministic acceptance check run in the sandbox against each
@@ -77,7 +76,6 @@ func (s *Spec) RetryCount() int {
 // Spec is a full benchmark definition.
 type Spec struct {
 	Prompt      string `yaml:"prompt"`
-	PromptFile  string `yaml:"promptFile"`
 	App         string `yaml:"app"`
 	Model       string `yaml:"model"`
 	Runs        int    `yaml:"runs"`
@@ -165,9 +163,6 @@ func (s *Spec) resolve(baseDir string) error {
 
 	s.App = resolvePath(baseDir, s.App)
 	s.Output = resolvePath(baseDir, s.Output)
-	if s.PromptFile != "" {
-		s.PromptFile = resolvePath(baseDir, s.PromptFile)
-	}
 
 	configDir, err := expandHome(s.Auth.ConfigDir)
 	if err != nil {
@@ -176,47 +171,17 @@ func (s *Spec) resolve(baseDir string) error {
 	s.Auth.ConfigDir = configDir
 	s.CredsFile = resolveCredsFile(configDir)
 
-	basePrompt, err := s.resolvedPrompt(s.Prompt, s.PromptFile)
-	if err != nil {
-		return err
-	}
-
 	for i := range s.Configs {
 		c := &s.Configs[i]
 		c.Bundle = resolvePath(baseDir, c.Bundle)
-		if c.PromptFile != "" {
-			c.PromptFile = resolvePath(baseDir, c.PromptFile)
+		if c.Prompt == "" {
+			c.Prompt = s.Prompt
 		}
-		prompt, err := s.resolvedPrompt(c.Prompt, c.PromptFile)
-		if err != nil {
-			return fmt.Errorf("config %q: %w", c.Name, err)
-		}
-		if prompt == "" {
-			prompt = basePrompt
-		}
-		c.Prompt = prompt
 		if c.Model == "" {
 			c.Model = s.Model
 		}
 	}
 	return nil
-}
-
-func (s *Spec) resolvedPrompt(inline, file string) (string, error) {
-	if inline != "" && file != "" {
-		return "", fmt.Errorf("prompt and promptFile are mutually exclusive")
-	}
-	if inline != "" {
-		return inline, nil
-	}
-	if file != "" {
-		b, err := os.ReadFile(file)
-		if err != nil {
-			return "", fmt.Errorf("read promptFile: %w", err)
-		}
-		return string(b), nil
-	}
-	return "", nil
 }
 
 func (s *Spec) validate() error {
@@ -261,7 +226,7 @@ func (s *Spec) validate() error {
 			return fmt.Errorf("config %q: bundle %q is not a directory", c.Name, c.Bundle)
 		}
 		if c.Prompt == "" {
-			return fmt.Errorf("config %q: no prompt (set a top-level prompt/promptFile or one per config)", c.Name)
+			return fmt.Errorf("config %q: no prompt (set a top-level prompt or one per config)", c.Name)
 		}
 	}
 	return nil

@@ -23,11 +23,17 @@ var (
 	compareJS string
 	//go:embed static/export.js
 	exportJS string
+	//go:embed static/theme.js
+	themeJS string
+	//go:embed static/theme-init.js
+	themeInitJS string
 )
 
-func styleCSS() htmltmpl.CSS     { return htmltmpl.CSS(reportCSS) }
-func compareScript() htmltmpl.JS { return htmltmpl.JS(compareJS) }
-func exportScript() htmltmpl.JS  { return htmltmpl.JS(exportJS) }
+func styleCSS() htmltmpl.CSS       { return htmltmpl.CSS(reportCSS) }
+func compareScript() htmltmpl.JS   { return htmltmpl.JS(compareJS) }
+func exportScript() htmltmpl.JS    { return htmltmpl.JS(exportJS) }
+func themeScript() htmltmpl.JS     { return htmltmpl.JS(themeJS) }
+func themeInitScript() htmltmpl.JS { return htmltmpl.JS(themeInitJS) }
 
 // toolSummary formats a run's tool usage, most-used first, e.g.
 // "Edit ×12 · Read ×8 · Bash ×5". Empty when the run recorded no tool breakdown.
@@ -194,6 +200,17 @@ func status(r RunReport) string {
 	default:
 		return "ok"
 	}
+}
+
+// winnerConfig is the name of the highest-scoring config, or empty when no
+// evaluation ran. EvalByConfig sorts by mean score descending, so the first
+// entry wins; the HTML report highlights that config's rows.
+func winnerConfig(r Report) string {
+	scores := r.EvalByConfig()
+	if len(scores) == 0 {
+		return ""
+	}
+	return scores[0].Config
 }
 
 func statusClass(r RunReport) string {
@@ -532,19 +549,29 @@ const htmlSource = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rapport claude-benchy</title>
+<script>{{themeInitJS}}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 {{styleCSS}}</style>
 </head>
 <body>
 <header class="topbar">
-  <span class="brand">{{if .HomeURL}}<a href="{{.HomeURL}}">benchy</a>{{else}}benchy{{end}}</span>
+  {{if .HomeURL}}<a class="brand" href="{{.HomeURL}}"><span class="logo">b</span><span class="name">benchy</span></a>{{else}}<span class="brand"><span class="logo">b</span><span class="name">benchy</span></span>{{end}}
   <span class="root">rapport</span>
+  <span class="spacer"></span>
+  {{if .HomeURL}}<nav class="nav-seg" aria-label="Sections">
+    <a class="seg" href="{{.HomeURL}}">Dashboard</a>
+    <span class="seg disabled" aria-disabled="true">Run live</span>
+    <span class="seg active" aria-current="page">Rapport</span>
+  </nav>{{end}}
+  <button type="button" id="theme-toggle" class="theme-toggle" title="Basculer le thème">☀</button>
 </header>
-{{if .ReuseURL}}<p class="backlink"><a href="{{.ReuseURL}}">Reprendre cette config</a></p>
-{{end}}<h1>Rapport claude-benchy</h1>
+<div class="page">
+{{if .ReuseURL}}<p class="backlink"><a href="{{.ReuseURL}}">← Reprendre cette config</a></p>
+{{end}}<p class="eyebrow">Rapport · {{.GeneratedAt}}</p>
+<h1>Rapport claude-benchy</h1>
 <p class="meta-list"><strong>Généré :</strong> {{.GeneratedAt}} &nbsp;·&nbsp; <strong>App :</strong> <code>{{.App}}</code></p>
 
 <div class="layout">
@@ -566,13 +593,14 @@ const htmlSource = `<!doctype html>
 </div>
 
 <h2 id="comparaison">Comparaison</h2>
+{{- $winner := winnerConfig .}}
 <table>
 <thead>
 <tr><th>Config</th><th>Modèle</th><th>Statut</th><th>Checks</th><th>Tours</th><th>Outils</th><th>Coût</th><th>Durée</th><th>Fichiers</th><th>+Lignes</th><th>-Lignes</th>{{if .TranscriptBase}}<th>Détail</th>{{end}}</tr>
 </thead>
 <tbody>
 {{- range .Runs}}
-<tr>
+<tr{{if not .OK}} class="row-degenerate"{{else if and $winner (eq .Config $winner)}} class="row-winner"{{end}}>
 <td>{{.Label}}</td>
 <td>{{.Model}}</td>
 <td><span class="badge {{statusClass .}}">{{status .}}</span></td>
@@ -772,8 +800,9 @@ const htmlSource = `<!doctype html>
 </div>
 </aside>
 </div>
+</div>
 
-
+<script>{{themeJS}}</script>
 <script>
 var BENCHY_FILES = {{filesJSON .}};
 {{compareJS}}</script>
@@ -818,5 +847,8 @@ func htmlFuncs() htmltmpl.FuncMap {
 	fm["styleCSS"] = styleCSS
 	fm["compareJS"] = compareScript
 	fm["exportJS"] = exportScript
+	fm["themeJS"] = themeScript
+	fm["themeInitJS"] = themeInitScript
+	fm["winnerConfig"] = winnerConfig
 	return fm
 }

@@ -13,4 +13,4 @@
 - [ADR-0007 — Reconstruction du rapport sans appel API](0007-reconstruction-rapport-sans-api.md)
 - [ADR-0008 — Dashboard bibliothèque standard, localhost par défaut](0008-dashboard-stdlib-localhost.md)
 - [ADR-0009 — La baseline git inclut le bundle](0009-baseline-git-inclut-le-bundle.md)
-- [ADR-0010 — Rapport HTML autoportant (design Gazoline inline)](0010-rapport-html-autoportant.md)
+- [ADR-0010 — Rapport HTML autoportant (design Benchy inline)](0010-rapport-html-autoportant.md)

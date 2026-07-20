@@ -19,12 +19,16 @@ configurer un banc sans manipuler de chemins absolus à la main.
 ## Ce qui est offert
 
 - **Sélection des chemins** : chaque champ de chemin (app, bundle, dossier de
-  sortie, fichier de prompt, configDir) offre un bouton 📁 qui ouvre un
+  sortie, configDir) offre un bouton 📁 qui ouvre un
   explorateur de dossiers **côté serveur** — le navigateur ne divulgue pas les
   chemins absolus, c'est donc benchy qui liste le système de fichiers de l'hôte.
 - **Consulter les fichiers** : les champs app et bundle offrent un bouton 👁 qui
   ouvre une arborescence en lecture seule avec aperçu du contenu de chaque
   fichier — pour vérifier ce que contient un bundle ou l'app avant de lancer.
+- **Aperçus intégrés au formulaire** : le champ App affiche le **premier niveau**
+  du dossier de test (dossiers **et** fichiers), et chaque config affiche les
+  entrées de premier niveau de son bundle en puces — via le listing en mode
+  fichier, qui inclut les fichiers là où le mode dossier n'en montre pas.
 
 Cette exploration parcourt librement le FS de l'hôte : c'est **assumé** par la
 posture localhost (voir
